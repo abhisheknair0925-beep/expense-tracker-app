@@ -1,5 +1,5 @@
 import 'package:flutter_test/flutter_test.dart';
-import 'package:my_flutter_app1/main.dart';
+import 'package:expence_tracker_app/main.dart';
 
 void main() {
   testWidgets('App launches', (tester) async {

@@ -1,6 +1,6 @@
 {
-    "name": "my_flutter_app1",
-    "short_name": "my_flutter_app1",
+    "name": "Expence Tracker",
+    "short_name": "Expence Tracker",
     "start_url": ".",
     "display": "standalone",
     "background_color": "#0175C2",
