@@ -1,17 +1,33 @@
-# Expence Tracker App
+# Expense Manager Tracker (Flutter)
 
-A new Flutter project.
+A cross-platform mobile application built using Flutter to track daily expenses, analyze spending patterns, and manage budgets efficiently.
 
-## Getting Started
+## Features
 
-This project is a starting point for a Flutter application.
+* Expense tracking with categories
+* Monthly analytics dashboard (charts)
+* Firebase authentication & cloud sync
+* Offline storage using SQLite
+* Clean architecture with Provider state management
 
-A few resources to get you started if this is your first Flutter project:
+## Tech Stack
 
-- [Learn Flutter](https://docs.flutter.dev/get-started/learn-flutter)
-- [Write your first Flutter app](https://docs.flutter.dev/get-started/codelab)
-- [Flutter learning resources](https://docs.flutter.dev/reference/learning-resources)
+* Flutter (Dart)
+* Firebase (Auth, Firestore)
+* SQLite
+* Provider
+* fl_chart
 
-For help getting started with Flutter development, view the
-[online documentation](https://docs.flutter.dev/), which offers tutorials,
-samples, guidance on mobile development, and a full API reference.
+## Screenshots
+
+(Add 4–5 app screenshots here)
+
+## Demo
+
+(Add APK / video link)
+
+## Installation
+
+git clone <repo>
+flutter pub get
+flutter run

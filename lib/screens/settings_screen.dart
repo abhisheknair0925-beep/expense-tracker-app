@@ -5,9 +5,12 @@ import '../core/theme/app_theme.dart';
 import '../providers/auth_provider.dart';
 import '../providers/transaction_provider.dart';
 import '../services/currency_service.dart';
-import '../services/export_service.dart';
 import '../services/security_service.dart';
 import '../services/sync_service.dart';
+import '../providers/user_provider.dart';
+import '../features/profile/profile_switch_screen.dart';
+import '../features/auth/phone_input_screen.dart';
+import '../models/profile_model.dart';
 import '../widgets/glass_card.dart';
 
 /// Settings screen — export, currency, security, sync.
@@ -59,13 +62,9 @@ class _SettingsScreenState extends State<SettingsScreen> {
             SliverToBoxAdapter(child: Padding(
               padding: const EdgeInsets.symmetric(horizontal: 16),
               child: Column(children: [
-                _tile(Icons.description_rounded, 'Export CSV', 'Download transactions as CSV', AppTheme.incomeGreen, () {
-                  final p = context.read<TransactionProvider>();
-                  ExportService.instance.exportCsv(p.monthly);
-                }),
-                _tile(Icons.summarize_rounded, 'Monthly Report', 'Share a text summary report', AppTheme.accentBlue, () {
-                  final p = context.read<TransactionProvider>();
-                  ExportService.instance.exportReport(p.monthly, month: p.month, year: p.year, income: p.income, expense: p.expense);
+                _tile(Icons.description_rounded, 'Detailed Reports', 'Access professional statements', AppTheme.accentBlue, () {
+                   // Navigate to reports tab (index 3 in ShellScreen)
+                   // For now just close or notify
                 }),
               ]),
             )),
@@ -75,7 +74,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
             SliverToBoxAdapter(child: Padding(
               padding: const EdgeInsets.symmetric(horizontal: 16),
               child: GlassCard(padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 4), child: DropdownButtonFormField<String>(
-                initialValue: _currency, dropdownColor: AppTheme.primaryMid,
+                value: _currency, dropdownColor: AppTheme.primaryMid,
                 style: GoogleFonts.poppins(color: AppTheme.textPrimary),
                 decoration: InputDecoration(border: InputBorder.none, labelText: 'Display Currency', labelStyle: GoogleFonts.poppins(color: AppTheme.textMuted),
                   prefixIcon: const Icon(Icons.currency_exchange_rounded, color: AppTheme.textMuted)),
@@ -121,6 +120,23 @@ class _SettingsScreenState extends State<SettingsScreen> {
               ]),
             )),
 
+            // ─── Profile Management ──────────────────────────────
+            SliverToBoxAdapter(child: _section('Profile Management')),
+            SliverToBoxAdapter(child: Padding(
+              padding: const EdgeInsets.symmetric(horizontal: 16),
+              child: Column(children: [
+                Consumer<UserProvider>(builder: (context, userProvider, _) {
+                  return _tile(
+                    userProvider.selectedProfile?.profileType == ProfileType.personal ? Icons.person_outline : Icons.business,
+                    'Switch Profile',
+                    'Active: ${userProvider.selectedProfile?.profileType.name.toUpperCase()}',
+                    AppTheme.accentPurple,
+                    () => Navigator.push(context, MaterialPageRoute(builder: (_) => const ProfileSwitchScreen())),
+                  );
+                }),
+              ]),
+            )),
+
             // ─── Account & Cloud Sync ─────────────────────────────
             SliverToBoxAdapter(child: _section('Account & Cloud Sync')),
             SliverToBoxAdapter(child: Padding(
@@ -136,19 +152,30 @@ class _SettingsScreenState extends State<SettingsScreen> {
                   GlassCard(padding: const EdgeInsets.all(14), child: Row(children: [
                     CircleAvatar(radius: 20, backgroundColor: AppTheme.accentPurple,
                       backgroundImage: auth.photoUrl != null ? NetworkImage(auth.photoUrl!) : null,
-                      child: auth.photoUrl == null ? Text(auth.displayName[0], style: GoogleFonts.poppins(color: Colors.white, fontWeight: FontWeight.w600)) : null),
+                      child: auth.photoUrl == null ? Text(auth.displayName.isNotEmpty ? auth.displayName[0].toUpperCase() : '?', style: GoogleFonts.poppins(color: Colors.white, fontWeight: FontWeight.w600)) : null),
                     const SizedBox(width: 14),
                     Expanded(child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
                       Text(auth.displayName, style: GoogleFonts.poppins(color: AppTheme.textPrimary, fontSize: 14, fontWeight: FontWeight.w600)),
                       Text(auth.email ?? '', style: GoogleFonts.poppins(color: AppTheme.textMuted, fontSize: 11)),
                     ])),
                   ])),
+                  
+                  // Account Linking
+                  if (!auth.linkedProviders.contains('google.com'))
+                    _tile(Icons.link_rounded, 'Link Google Account', 'Secure your account with Google', AppTheme.accentBlue, () async {
+                      await auth.signInWithGoogle();
+                    }),
+                  if (!auth.linkedProviders.contains('phone'))
+                    _tile(Icons.add_to_home_screen_rounded, 'Link Phone Number', 'Use phone for quick login', AppTheme.incomeGreen, () {
+                      Navigator.push(context, MaterialPageRoute(builder: (_) => const PhoneInputScreen()));
+                    }),
+
                   // Sync button
                   _tile(Icons.cloud_sync_rounded, 'Sync Now', SyncService.instance.statusText, AppTheme.accentBlue, () => auth.manualSync()),
                   // Sign out
                   _tile(Icons.logout_rounded, 'Sign Out', 'Remove account from this device', AppTheme.expenseRed, () async {
                     await auth.signOut();
-                    if (context.mounted) Navigator.pushReplacementNamed(context, '/login');
+                    if (context.mounted) Navigator.pushNamedAndRemoveUntil(context, '/login', (route) => false);
                   }),
                 ]);
               }),

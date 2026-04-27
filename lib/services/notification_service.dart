@@ -22,7 +22,7 @@ class NotificationService {
       requestSoundPermission: true,
     );
     const settings = InitializationSettings(android: android, iOS: ios);
-    await _plugin.initialize(settings);
+    await _plugin.initialize(settings: settings);
     _initialized = true;
   }
 
@@ -60,17 +60,19 @@ class NotificationService {
 
     try {
       await _plugin.zonedSchedule(
-        id, title, body, tzDate, details,
+        id: id,
+        title: title,
+        body: body,
+        scheduledDate: tzDate,
+        notificationDetails: details,
         androidScheduleMode: AndroidScheduleMode.inexactAllowWhileIdle,
-        uiLocalNotificationDateInterpretation:
-            UILocalNotificationDateInterpretation.absoluteTime,
       );
     } catch (e) {
       debugPrint('Error scheduling notification: $e');
     }
   }
 
-  Future<void> cancel(int id) async => _plugin.cancel(id);
+  Future<void> cancel(int id) async => _plugin.cancel(id: id);
 
   /// Show an immediate notification.
   Future<void> showNow({required int id, required String title, required String body}) async {
@@ -80,6 +82,11 @@ class NotificationService {
       priority: Priority.defaultPriority,
     );
     const details = NotificationDetails(android: androidDetails);
-    await _plugin.show(id, title, body, details);
+    await _plugin.show(
+      id: id,
+      title: title,
+      body: body,
+      notificationDetails: details,
+    );
   }
 }

@@ -23,12 +23,16 @@ class SyncService {
   bool _syncing = false;
   bool get isSyncing => _syncing;
 
+  String? _lastError;
+  String? get lastError => _lastError;
+
   String? get _uid => AuthService.instance.uid;
 
   /// Full sync — upload unsynced + download new from cloud.
   Future<void> syncAll() async {
     if (_uid == null || _syncing) return;
     _syncing = true;
+    _lastError = null;
     debugPrint('SyncService: Starting full sync for $_uid');
 
     try {
@@ -36,7 +40,11 @@ class SyncService {
       await _downloadAll();
       debugPrint('SyncService: Sync complete');
     } catch (e) {
+      _lastError = e.toString();
       debugPrint('SyncService: Sync error: $e');
+      if (_lastError!.contains('firestore.googleapis.com')) {
+        _lastError = 'Firestore API not enabled. Please enable it in Firebase Console.';
+      }
     } finally {
       _syncing = false;
     }
@@ -247,6 +255,7 @@ class SyncService {
   String get statusText {
     if (_uid == null) return 'Not signed in';
     if (_syncing) return 'Syncing...';
+    if (_lastError != null) return _lastError!;
     return 'Connected';
   }
 }

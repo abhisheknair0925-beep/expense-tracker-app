@@ -12,7 +12,8 @@ import 'add_transaction_screen.dart';
 import 'bills_screen.dart';
 import 'budget_screen.dart';
 import 'home_screen.dart';
-import 'insights_screen.dart';
+import '../features/insights/insights_screen.dart';
+import '../features/reports/reports_screen.dart';
 import 'transactions_screen.dart';
 
 /// Root shell with bottom navigation bar and FAB.
@@ -59,7 +60,7 @@ class _ShellScreenState extends State<ShellScreen> {
             HomeContent(),
             TransactionsScreen(),
             AccountsScreen(),
-            BillsScreen(),
+            ReportsScreen(),
             InsightsScreen(),
             BudgetScreen(),
           ]),
@@ -85,7 +86,7 @@ class _ShellScreenState extends State<ShellScreen> {
             _navItem(Icons.home_rounded, 'Home', 0),
             _navItem(Icons.swap_horiz_rounded, 'History', 1),
             const SizedBox(width: 48), // FAB gap
-            _navItem(Icons.pie_chart_rounded, 'Budget', 5),
+            _navItem(Icons.assessment_outlined, 'Reports', 3),
             _navItem(Icons.auto_awesome_rounded, 'Insights', 4),
           ]),
         ),

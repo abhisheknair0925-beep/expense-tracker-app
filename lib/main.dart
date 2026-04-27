@@ -5,12 +5,17 @@ import 'package:provider/provider.dart';
 import 'core/theme/app_theme.dart';
 import 'providers/account_provider.dart';
 import 'providers/auth_provider.dart';
+import 'providers/user_provider.dart';
 import 'providers/bill_provider.dart';
 import 'providers/budget_provider.dart';
 import 'providers/transaction_provider.dart';
+import 'features/insights/providers/insights_provider.dart';
+import 'features/reports/providers/report_provider.dart';
+import 'providers/session_provider.dart';
 import 'screens/lock_screen.dart';
 import 'screens/login_screen.dart';
 import 'screens/shell_screen.dart';
+import 'features/auth/onboarding_screen.dart';
 import 'services/notification_service.dart';
 
 void main() async {
@@ -38,11 +43,35 @@ class App extends StatelessWidget {
   Widget build(BuildContext context) {
     return MultiProvider(
       providers: [
-        ChangeNotifierProvider(create: (_) => AuthProvider()),
-        ChangeNotifierProvider(create: (_) => TransactionProvider()),
-        ChangeNotifierProvider(create: (_) => AccountProvider()),
-        ChangeNotifierProvider(create: (_) => BillProvider()),
-        ChangeNotifierProvider(create: (_) => BudgetProvider()),
+        ChangeNotifierProvider(create: (_) => UserProvider()),
+        ChangeNotifierProvider(create: (_) => SessionProvider()),
+        ChangeNotifierProxyProvider2<UserProvider, SessionProvider, AuthProvider>(
+          create: (context) => AuthProvider(context.read<UserProvider>(), context.read<SessionProvider>()),
+          update: (context, userProvider, sessionProvider, previous) => previous ?? AuthProvider(userProvider, sessionProvider),
+        ),
+        ChangeNotifierProxyProvider<UserProvider, TransactionProvider>(
+          create: (context) => TransactionProvider(),
+          update: (context, userProvider, previous) {
+            final p = previous ?? TransactionProvider();
+            // Optional: Trigger reload if profile changed
+            // p.loadForProfile(userProvider.selectedProfile?.profileId);
+            return p;
+          },
+        ),
+        ChangeNotifierProxyProvider<UserProvider, AccountProvider>(
+          create: (context) => AccountProvider(),
+          update: (context, userProvider, previous) => previous ?? AccountProvider(),
+        ),
+        ChangeNotifierProxyProvider<UserProvider, BillProvider>(
+          create: (context) => BillProvider(),
+          update: (context, userProvider, previous) => previous ?? BillProvider(),
+        ),
+        ChangeNotifierProxyProvider<UserProvider, BudgetProvider>(
+          create: (context) => BudgetProvider(),
+          update: (context, userProvider, previous) => previous ?? BudgetProvider(),
+        ),
+        ChangeNotifierProvider(create: (_) => InsightsProvider()),
+        ChangeNotifierProvider(create: (_) => ReportProvider()),
       ],
       child: MaterialApp(
         title: 'Expense Tracker',
@@ -51,6 +80,7 @@ class App extends StatelessWidget {
         home: const AuthGate(),
         routes: {
           '/login': (_) => const LoginScreen(),
+          '/onboarding': (_) => const OnboardingScreen(),
           '/home': (_) => const LockScreen(child: ShellScreen()),
         },
       ),
@@ -65,9 +95,35 @@ class AuthGate extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final auth = context.watch<AuthProvider>();
-    if (auth.isSignedIn) {
-      return const LockScreen(child: ShellScreen());
+    final userProvider = context.watch<UserProvider>();
+
+    if (!auth.isSignedIn) {
+      return const LoginScreen();
     }
-    return const LoginScreen();
+
+    // Session validation
+    return Consumer<SessionProvider>(
+      builder: (context, session, _) {
+        if (!session.isSessionValid) {
+          // Trigger check if not already validated
+          session.checkSession();
+          return const Scaffold(
+            body: Center(child: CircularProgressIndicator()),
+          );
+        }
+
+        if (userProvider.loading) {
+          return const Scaffold(
+            body: Center(child: CircularProgressIndicator()),
+          );
+        }
+
+        if (userProvider.needsOnboarding) {
+          return const OnboardingScreen();
+        }
+
+        return const LockScreen(child: ShellScreen());
+      },
+    );
   }
 }

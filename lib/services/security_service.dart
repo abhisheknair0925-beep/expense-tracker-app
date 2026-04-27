@@ -68,7 +68,8 @@ class SecurityService {
     try {
       return await _auth.authenticate(
         localizedReason: 'Unlock Expense Tracker',
-        options: const AuthenticationOptions(biometricOnly: true, stickyAuth: true),
+        biometricOnly: true,
+        persistAcrossBackgrounding: true,
       );
     } on PlatformException {
       return false;

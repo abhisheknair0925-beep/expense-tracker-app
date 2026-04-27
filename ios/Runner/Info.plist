@@ -66,5 +66,22 @@
 		<string>UIInterfaceOrientationLandscapeLeft</string>
 		<string>UIInterfaceOrientationLandscapeRight</string>
 	</array>
+	<key>NSCameraUsageDescription</key>
+	<string>This app needs camera access to scan receipts and take profile pictures.</string>
+	<key>NSPhotoLibraryUsageDescription</key>
+	<string>This app needs photo library access to pick receipts and profile pictures.</string>
+	<key>NSFaceIDUsageDescription</key>
+	<string>This app needs Face ID to secure your financial data.</string>
+	<key>CFBundleURLTypes</key>
+	<array>
+		<dict>
+			<key>CFBundleTypeRole</key>
+			<string>Editor</string>
+			<key>CFBundleURLSchemes</key>
+			<array>
+				<string>com.googleusercontent.apps.936264239936-g9qnphu0lckn9cn77kbnd9g7n7ir9ihi</string>
+			</array>
+		</dict>
+	</array>
 </dict>
 </plist>

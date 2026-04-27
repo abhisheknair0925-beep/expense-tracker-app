@@ -1,6 +1,6 @@
 <manifest xmlns:android="http://schemas.android.com/apk/res/android">
     <application
-        android:label="Expence Tracker"
+        android:label="Expense Tracker Pro"
         android:name="${applicationName}"
         android:icon="@mipmap/ic_launcher">
         <activity

@@ -5,6 +5,8 @@ import '../core/theme/app_theme.dart';
 import '../providers/auth_provider.dart';
 import '../widgets/glass_card.dart';
 
+import '../features/auth/phone_input_screen.dart';
+
 /// Premium glassmorphism login screen.
 class LoginScreen extends StatelessWidget {
   const LoginScreen({super.key});
@@ -49,7 +51,10 @@ class LoginScreen extends StatelessWidget {
 
               // Google Sign-In button
               GestureDetector(
-                onTap: auth.loading ? null : () => auth.signInWithGoogle(),
+                onTap: auth.loading ? null : () async {
+                  await auth.signInWithGoogle();
+                  // AuthGate will handle navigation automatically
+                },
                 child: GlassCard(
                   padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 16),
                   child: Row(mainAxisAlignment: MainAxisAlignment.center, children: [
@@ -69,9 +74,14 @@ class LoginScreen extends StatelessWidget {
               ),
               const SizedBox(height: 14),
 
-              // Phone login placeholder
+              // Phone login
               GestureDetector(
-                onTap: () => _showPhoneStub(context),
+                onTap: () {
+                  Navigator.push(
+                    context,
+                    MaterialPageRoute(builder: (_) => const PhoneInputScreen()),
+                  );
+                },
                 child: GlassCard(
                   padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 16),
                   child: Row(mainAxisAlignment: MainAxisAlignment.center, children: [
@@ -85,7 +95,7 @@ class LoginScreen extends StatelessWidget {
 
               // Skip button (use without login)
               TextButton(
-                onPressed: () => Navigator.of(context).pushReplacementNamed('/home'),
+                onPressed: () => Navigator.of(context).pushNamedAndRemoveUntil('/home', (route) => false),
                 child: Text('Skip for now', style: GoogleFonts.poppins(color: AppTheme.textMuted, fontSize: 13, decoration: TextDecoration.underline, decorationColor: AppTheme.textMuted)),
               ),
               const Spacer(),
@@ -97,14 +107,5 @@ class LoginScreen extends StatelessWidget {
         ),
       ),
     );
-  }
-
-  void _showPhoneStub(BuildContext context) {
-    ScaffoldMessenger.of(context).showSnackBar(SnackBar(
-      content: Text('Phone login coming soon!', style: GoogleFonts.poppins()),
-      backgroundColor: AppTheme.accentPurple.withValues(alpha: 0.9),
-      behavior: SnackBarBehavior.floating,
-      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-    ));
   }
 }
