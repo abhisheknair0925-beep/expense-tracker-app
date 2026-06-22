@@ -9,7 +9,6 @@ import '../providers/budget_provider.dart';
 import '../providers/transaction_provider.dart';
 import 'accounts_screen.dart';
 import 'add_transaction_screen.dart';
-import 'bills_screen.dart';
 import 'budget_screen.dart';
 import 'home_screen.dart';
 import '../features/insights/insights_screen.dart';

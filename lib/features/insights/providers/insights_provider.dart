@@ -3,7 +3,6 @@ import '../models/insight_model.dart';
 import '../insights_engine.dart';
 import '../../../providers/transaction_provider.dart';
 import '../../../providers/budget_provider.dart';
-import '../../../models/transaction_model.dart';
 
 class InsightsProvider extends ChangeNotifier {
   List<InsightModel> _insights = [];
@@ -21,7 +20,6 @@ class InsightsProvider extends ChangeNotifier {
     notifyListeners();
 
     try {
-      final now = DateTime.now();
       final currentMonth = transactionProvider.month;
       final currentYear = transactionProvider.year;
       

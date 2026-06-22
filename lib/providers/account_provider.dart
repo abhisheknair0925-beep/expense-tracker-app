@@ -10,6 +10,22 @@ class AccountProvider extends ChangeNotifier {
   bool _loading = false;
   String? _profileId;
 
+  AccountProvider() {
+    SyncService.instance.addListener(_onSyncChange);
+  }
+
+  void _onSyncChange() {
+    if (!SyncService.instance.isSyncing) {
+      load();
+    }
+  }
+
+  @override
+  void dispose() {
+    SyncService.instance.removeListener(_onSyncChange);
+    super.dispose();
+  }
+
   List<Account> get accounts => _list;
   bool get loading => _loading;
   double get totalBalance => _list.fold(0.0, (s, a) => s + a.balance);

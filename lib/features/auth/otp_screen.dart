@@ -4,7 +4,6 @@ import 'package:pinput/pinput.dart';
 import 'package:provider/provider.dart';
 import '../../core/theme/app_theme.dart';
 import '../../providers/auth_provider.dart';
-import '../../widgets/glass_card.dart';
 
 class OtpScreen extends StatefulWidget {
   final String phoneNumber;

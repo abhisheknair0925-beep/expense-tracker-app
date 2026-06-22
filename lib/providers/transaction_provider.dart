@@ -13,6 +13,22 @@ class TransactionProvider extends ChangeNotifier {
   int _year = DateTime.now().year;
   String? _profileId;
 
+  TransactionProvider() {
+    SyncService.instance.addListener(_onSyncChange);
+  }
+
+  void _onSyncChange() {
+    if (!SyncService.instance.isSyncing) {
+      load();
+    }
+  }
+
+  @override
+  void dispose() {
+    SyncService.instance.removeListener(_onSyncChange);
+    super.dispose();
+  }
+
   List<Txn> get all => _all;
   bool get loading => _loading;
   int get month => _month;

@@ -11,6 +11,22 @@ class BudgetProvider extends ChangeNotifier {
   final int _year = DateTime.now().year;
   String? _profileId;
 
+  BudgetProvider() {
+    SyncService.instance.addListener(_onSyncChange);
+  }
+
+  void _onSyncChange() {
+    if (!SyncService.instance.isSyncing) {
+      load();
+    }
+  }
+
+  @override
+  void dispose() {
+    SyncService.instance.removeListener(_onSyncChange);
+    super.dispose();
+  }
+
   List<Budget> get budgets => _list;
   int get month => _month;
   int get year => _year;

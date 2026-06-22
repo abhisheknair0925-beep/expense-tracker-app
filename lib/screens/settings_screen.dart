@@ -97,7 +97,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
             SliverToBoxAdapter(child: Padding(
               padding: const EdgeInsets.symmetric(horizontal: 16),
               child: GlassCard(padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 4), child: DropdownButtonFormField<String>(
-                value: _currency, dropdownColor: AppTheme.primaryMid,
+                initialValue: _currency, dropdownColor: AppTheme.primaryMid,
                 style: GoogleFonts.poppins(color: AppTheme.textPrimary),
                 decoration: InputDecoration(border: InputBorder.none, labelText: 'Display Currency', labelStyle: GoogleFonts.poppins(color: AppTheme.textMuted),
                   prefixIcon: const Icon(Icons.currency_exchange_rounded, color: AppTheme.textMuted)),

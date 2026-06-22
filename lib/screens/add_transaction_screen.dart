@@ -133,11 +133,6 @@ class _AddState extends State<AddTransactionScreen> with SingleTickerProviderSta
       amount: double.parse(_amount.text.trim()),
       type: _type, category: _cat!, accountId: _accountId, receiptPath: _receiptPath, date: _date,
     ));
-    // Adjust account balance if linked
-    if (_accountId != null && mounted) {
-      await context.read<AccountProvider>().adjustBalance(
-        _accountId!, double.parse(_amount.text.trim()), _type);
-    }
     if (mounted) Navigator.pop(context);
   }
 
@@ -184,7 +179,7 @@ class _AddState extends State<AddTransactionScreen> with SingleTickerProviderSta
                     const SizedBox(height: 10),
                     // Category
                     GlassCard(padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 4), child: DropdownButtonFormField<String>(
-                      value: _cat, dropdownColor: AppTheme.primaryMid,
+                      initialValue: _cat, dropdownColor: AppTheme.primaryMid,
                       style: GoogleFonts.poppins(color: AppTheme.textPrimary),
                       decoration: _dec('Category', Icons.category_rounded),
                       items: _cats.map((c) => DropdownMenuItem(value: c, child: Text(c))).toList(),

@@ -354,7 +354,7 @@ class _BillsScreenState extends State<BillsScreen> {
               TextField(controller: amountCtrl, keyboardType: const TextInputType.numberWithOptions(decimal: true), style: GoogleFonts.poppins(color: AppTheme.textPrimary), decoration: const InputDecoration(labelText: 'Amount', prefixIcon: Icon(Icons.currency_rupee_rounded, color: AppTheme.textMuted))),
               const SizedBox(height: 12),
               DropdownButtonFormField<String>(
-                value: selectedCategory,
+                initialValue: selectedCategory,
                 dropdownColor: AppTheme.primaryMid,
                 style: GoogleFonts.poppins(color: AppTheme.textPrimary),
                 decoration: const InputDecoration(labelText: 'Category', prefixIcon: Icon(Icons.category_rounded, color: AppTheme.textMuted)),

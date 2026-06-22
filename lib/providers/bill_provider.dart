@@ -11,6 +11,22 @@ class BillProvider extends ChangeNotifier {
   List<Bill> _list = [];
   String? _profileId;
 
+  BillProvider() {
+    SyncService.instance.addListener(_onSyncChange);
+  }
+
+  void _onSyncChange() {
+    if (!SyncService.instance.isSyncing) {
+      load();
+    }
+  }
+
+  @override
+  void dispose() {
+    SyncService.instance.removeListener(_onSyncChange);
+    super.dispose();
+  }
+
   List<Bill> get bills => _list;
   List<Bill> get overdue => _list.where((b) => b.isOverdue).toList();
   List<Bill> get dueSoon => _list.where((b) => b.isDueSoon).toList();

@@ -13,7 +13,7 @@ import 'firestore_service.dart';
 /// - SQLite = primary (offline-first)
 /// - Firestore = cloud backup
 /// - Conflict resolution: last updatedAt wins
-class SyncService {
+class SyncService extends ChangeNotifier {
   SyncService._();
   static final SyncService instance = SyncService._();
 
@@ -33,6 +33,7 @@ class SyncService {
     if (_uid == null || _syncing) return;
     _syncing = true;
     _lastError = null;
+    notifyListeners();
     debugPrint('SyncService: Starting full sync for $_uid');
 
     try {
@@ -47,6 +48,7 @@ class SyncService {
       }
     } finally {
       _syncing = false;
+      notifyListeners();
     }
   }
 

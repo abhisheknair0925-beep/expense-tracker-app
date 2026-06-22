@@ -20,6 +20,9 @@ class DatabaseService {
   Future<Database> _init() async {
     final p = join(await getDatabasesPath(), AppConstants.dbName);
     return openDatabase(p, version: AppConstants.dbVersion,
+      onConfigure: (db) async {
+        await db.execute('PRAGMA foreign_keys = ON;');
+      },
       onCreate: (db, v) async {
         await _createTables(db);
       },
@@ -79,6 +82,44 @@ class DatabaseService {
             await db.execute('ALTER TABLE $t ADD COLUMN profileId TEXT');
           }
         }
+        if (oldV < 8) {
+          // Re-create transactions table with FOREIGN KEY constraint
+          await db.execute('ALTER TABLE ${AppConstants.tableTxn} RENAME TO old_${AppConstants.tableTxn}');
+          
+          await db.execute('''
+            CREATE TABLE ${AppConstants.tableTxn} (
+              id INTEGER PRIMARY KEY AUTOINCREMENT,
+              firestoreId TEXT,
+              userId TEXT,
+              profileId TEXT,
+              title TEXT NOT NULL,
+              amount REAL NOT NULL,
+              type TEXT NOT NULL,
+              category TEXT NOT NULL,
+              accountId INTEGER,
+              receiptPath TEXT,
+              date TEXT NOT NULL,
+              updatedAt TEXT,
+              isSynced INTEGER NOT NULL DEFAULT 0,
+              FOREIGN KEY (accountId) REFERENCES ${AppConstants.tableAccounts}(id) ON DELETE SET NULL
+            )
+          ''');
+          
+          // Copy data safely
+          await db.execute('''
+            INSERT INTO ${AppConstants.tableTxn} (id, firestoreId, userId, profileId, title, amount, type, category, accountId, receiptPath, date, updatedAt, isSynced)
+            SELECT id, firestoreId, userId, profileId, title, amount, type, category, accountId, receiptPath, date, updatedAt, isSynced
+            FROM old_${AppConstants.tableTxn}
+          ''');
+          
+          await db.execute('DROP TABLE old_${AppConstants.tableTxn}');
+
+          // Add foreign key composite query indexes
+          await db.execute('CREATE INDEX IF NOT EXISTS idx_txn_profile_date ON ${AppConstants.tableTxn} (profileId, date DESC)');
+          await db.execute('CREATE INDEX IF NOT EXISTS idx_txn_account ON ${AppConstants.tableTxn} (accountId)');
+          await db.execute('CREATE INDEX IF NOT EXISTS idx_budgets_profile ON ${AppConstants.tableBudgets} (profileId)');
+          await db.execute('CREATE INDEX IF NOT EXISTS idx_bills_profile ON ${AppConstants.tableBills} (profileId)');
+        }
       },
     );
   }
@@ -98,7 +139,8 @@ class DatabaseService {
         receiptPath TEXT,
         date TEXT NOT NULL,
         updatedAt TEXT,
-        isSynced INTEGER NOT NULL DEFAULT 0
+        isSynced INTEGER NOT NULL DEFAULT 0,
+        FOREIGN KEY (accountId) REFERENCES ${AppConstants.tableAccounts}(id) ON DELETE SET NULL
       )
     ''');
     await db.execute('''
@@ -146,6 +188,12 @@ class DatabaseService {
         isSynced INTEGER NOT NULL DEFAULT 0
       )
     ''');
+
+    // Create Indexes
+    await db.execute('CREATE INDEX IF NOT EXISTS idx_txn_profile_date ON ${AppConstants.tableTxn} (profileId, date DESC)');
+    await db.execute('CREATE INDEX IF NOT EXISTS idx_txn_account ON ${AppConstants.tableTxn} (accountId)');
+    await db.execute('CREATE INDEX IF NOT EXISTS idx_budgets_profile ON ${AppConstants.tableBudgets} (profileId)');
+    await db.execute('CREATE INDEX IF NOT EXISTS idx_bills_profile ON ${AppConstants.tableBills} (profileId)');
   }
 
   // ═══════════════════════════════════════════════════════════════════
@@ -154,7 +202,18 @@ class DatabaseService {
 
   Future<int> insert(Txn t) async {
     final db = await database;
-    return db.insert(AppConstants.tableTxn, t.toMap());
+    return await db.transaction((txn) async {
+      final id = await txn.insert(AppConstants.tableTxn, t.toMap());
+      if (t.accountId != null) {
+        final adjustment = t.isIncome ? t.amount : -t.amount;
+        await txn.rawUpdate('''
+          UPDATE ${AppConstants.tableAccounts}
+          SET balance = balance + ?, updatedAt = ?
+          WHERE id = ?
+        ''', [adjustment, DateTime.now().toIso8601String(), t.accountId]);
+      }
+      return id;
+    });
   }
 
   Future<List<Txn>> getAll(String? profileId) async {
@@ -170,7 +229,21 @@ class DatabaseService {
 
   Future<int> delete(int id) async {
     final db = await database;
-    return db.delete(AppConstants.tableTxn, where: 'id = ?', whereArgs: [id]);
+    return await db.transaction((txn) async {
+      final rows = await txn.query(AppConstants.tableTxn, where: 'id = ?', whereArgs: [id]);
+      if (rows.isNotEmpty) {
+        final t = Txn.fromMap(rows.first);
+        if (t.accountId != null) {
+          final adjustment = t.isIncome ? -t.amount : t.amount;
+          await txn.rawUpdate('''
+            UPDATE ${AppConstants.tableAccounts}
+            SET balance = balance + ?, updatedAt = ?
+            WHERE id = ?
+          ''', [adjustment, DateTime.now().toIso8601String(), t.accountId]);
+        }
+      }
+      return await txn.delete(AppConstants.tableTxn, where: 'id = ?', whereArgs: [id]);
+    });
   }
 
   Future<int> updateTxn(Txn t) async {

@@ -57,9 +57,9 @@ class App extends StatelessWidget {
             return p;
           },
         ),
-        ChangeNotifierProxyProvider<UserProvider, AccountProvider>(
+        ChangeNotifierProxyProvider2<UserProvider, TransactionProvider, AccountProvider>(
           create: (context) => AccountProvider(),
-          update: (context, userProvider, previous) {
+          update: (context, userProvider, transactionProvider, previous) {
             final p = previous ?? AccountProvider();
             p.loadForProfile(userProvider.selectedProfile?.profileId);
             return p;

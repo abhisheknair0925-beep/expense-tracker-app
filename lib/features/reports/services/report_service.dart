@@ -3,7 +3,6 @@ import '../models/report_model.dart';
 import '../../insights/insights_engine.dart';
 import '../../insights/services/analytics_service.dart';
 import '../../../models/budget_model.dart';
-import 'package:collection/collection.dart';
 
 class ReportService {
   static ReportModel prepareReportData({
