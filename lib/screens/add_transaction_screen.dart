@@ -30,6 +30,7 @@ class _AddState extends State<AddTransactionScreen> with SingleTickerProviderSta
   bool _autoSuggested = false;
   DateTime _date = DateTime.now();
   bool _saving = false;
+  bool _ocrLoading = false;
   late final AnimationController _anim;
 
   @override
@@ -59,7 +60,50 @@ class _AddState extends State<AddTransactionScreen> with SingleTickerProviderSta
 
   Future<void> _pickReceipt({bool fromCamera = false}) async {
     final file = await ReceiptService.instance.pickReceipt(fromCamera: fromCamera);
-    if (file != null) setState(() => _receiptPath = file.path);
+    if (file == null) return;
+    
+    setState(() {
+      _receiptPath = file.path;
+      _ocrLoading = true;
+    });
+
+    try {
+      final data = await ReceiptService.instance.extractReceiptData(file.path);
+      if (data != null && mounted) {
+        setState(() {
+          if (data['title'] != null) _title.text = data['title'].toString();
+          if (data['amount'] != null) _amount.text = data['amount'].toString();
+          if (data['category'] != null) {
+            final catStr = data['category'].toString();
+            if (_cats.contains(catStr)) {
+              _cat = catStr;
+            } else if (AppConstants.expenseCategories.contains(catStr) || AppConstants.incomeCategories.contains(catStr)) {
+              if (AppConstants.incomeCategories.contains(catStr)) {
+                _type = AppConstants.typeIncome;
+              } else {
+                _type = AppConstants.typeExpense;
+              }
+              _cat = catStr;
+            }
+          }
+          if (data['date'] != null) {
+            final parsedDate = DateTime.tryParse(data['date'].toString());
+            if (parsedDate != null) _date = parsedDate;
+          }
+        });
+
+        ScaffoldMessenger.of(context).showSnackBar(SnackBar(
+          content: Text('✨ Auto-filled transaction details from receipt!', style: GoogleFonts.poppins()),
+          backgroundColor: AppTheme.incomeGreen.withValues(alpha: 0.9),
+          behavior: SnackBarBehavior.floating,
+          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+        ));
+      }
+    } catch (e) {
+      debugPrint('Error extracting receipt: $e');
+    } finally {
+      if (mounted) setState(() => _ocrLoading = false);
+    }
   }
 
   List<String> get _cats =>
@@ -101,155 +145,174 @@ class _AddState extends State<AddTransactionScreen> with SingleTickerProviderSta
   Widget build(BuildContext context) {
     return Scaffold(
       extendBodyBehindAppBar: true,
-      body: Container(
-        decoration: const BoxDecoration(gradient: AppTheme.bgGradient),
-        child: SafeArea(
-          child: ScaleTransition(
-            scale: CurvedAnimation(parent: _anim, curve: Curves.easeOutBack),
-            child: Column(children: [
-              // Header
-              Padding(padding: const EdgeInsets.all(16), child: Row(children: [
-                GlassCard(margin: EdgeInsets.zero, padding: const EdgeInsets.all(8), radius: 12, onTap: () => Navigator.pop(context),
-                  child: const Icon(Icons.arrow_back_rounded, color: AppTheme.textPrimary, size: 22)),
-                const SizedBox(width: 14),
-                Text('Add Transaction', style: GoogleFonts.poppins(color: AppTheme.textPrimary, fontSize: 20, fontWeight: FontWeight.w600)),
-              ])),
-              // Form
-              Expanded(child: SingleChildScrollView(
-                physics: const BouncingScrollPhysics(),
-                padding: const EdgeInsets.symmetric(horizontal: 16),
-                child: Form(key: _key, child: Column(children: [
-                  // Type toggle
-                  GlassCard(padding: const EdgeInsets.all(4), child: Row(children: [
-                    _toggle('Expense', AppConstants.typeExpense, AppTheme.expenseRed),
-                    const SizedBox(width: 4),
-                    _toggle('Income', AppConstants.typeIncome, AppTheme.incomeGreen),
-                  ])),
-                  const SizedBox(height: 12),
-                  // Title
-                  _field(_title, 'Title', Icons.title_rounded, (v) => v != null && v.trim().isNotEmpty ? null : 'Required'),
-                  const SizedBox(height: 10),
-                  // Amount
-                  _field(_amount, 'Amount', Icons.currency_rupee_rounded, (v) {
-                    if (v == null || v.trim().isEmpty) return 'Required';
-                    final n = double.tryParse(v.trim());
-                    if (n == null || n <= 0) return 'Invalid';
-                    return null;
-                  }, keyboard: const TextInputType.numberWithOptions(decimal: true), big: true),
-                  const SizedBox(height: 10),
-                  // Category
-                  GlassCard(padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 4), child: DropdownButtonFormField<String>(
-                    initialValue: _cat, dropdownColor: AppTheme.primaryMid,
-                    style: GoogleFonts.poppins(color: AppTheme.textPrimary),
-                    decoration: _dec('Category', Icons.category_rounded),
-                    items: _cats.map((c) => DropdownMenuItem(value: c, child: Text(c))).toList(),
-                    onChanged: (v) => setState(() => _cat = v),
-                  )),
-                  const SizedBox(height: 10),
-                  // Account (optional)
-                  Builder(builder: (ctx) {
-                    final accounts = context.watch<AccountProvider>().accounts;
-                    if (accounts.isEmpty) return const SizedBox.shrink();
-                    return Column(children: [
-                      GlassCard(padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 4), child: DropdownButtonFormField<int?>(
-                        initialValue: _accountId, dropdownColor: AppTheme.primaryMid,
-                        style: GoogleFonts.poppins(color: AppTheme.textPrimary),
-                        decoration: _dec('Account (optional)', Icons.account_balance_wallet_rounded),
-                        items: [
-                          DropdownMenuItem<int?>(value: null, child: Text('None', style: GoogleFonts.poppins(color: AppTheme.textMuted))),
-                          ...accounts.map((a) => DropdownMenuItem(value: a.id, child: Text(a.name))),
-                        ],
-                        onChanged: (v) => setState(() => _accountId = v),
-                      )),
-                      const SizedBox(height: 10),
-                    ]);
-                  }),
-                  // Date
-                  GlassCard(onTap: _pickDate, padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 16), child: Row(children: [
-                    const Icon(Icons.calendar_today_rounded, color: AppTheme.textMuted, size: 22),
-                    const SizedBox(width: 12),
-                    Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-                      Text('Date', style: GoogleFonts.poppins(color: AppTheme.textMuted, fontSize: 11)),
-                      Text(Fmt.date(_date), style: GoogleFonts.poppins(color: AppTheme.textPrimary, fontSize: 14, fontWeight: FontWeight.w500)),
-                    ]),
-                    const Spacer(),
-                    const Icon(Icons.chevron_right_rounded, color: AppTheme.textMuted),
-                  ])),
-                  const SizedBox(height: 22),
-                  // Receipt attach
-                  GlassCard(
-                    padding: const EdgeInsets.all(14),
-                    child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-                      Row(children: [
-                        const Icon(Icons.receipt_long_rounded, color: AppTheme.textMuted, size: 20),
-                        const SizedBox(width: 10),
-                        Text('Receipt', style: GoogleFonts.poppins(color: AppTheme.textPrimary, fontSize: 14, fontWeight: FontWeight.w500)),
-                        const Spacer(),
-                        GestureDetector(
-                          onTap: () => _pickReceipt(fromCamera: true),
-                          child: Container(
-                            padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
-                            decoration: BoxDecoration(color: AppTheme.glassWhite, borderRadius: BorderRadius.circular(10), border: Border.all(color: AppTheme.glassBorder)),
-                            child: Row(mainAxisSize: MainAxisSize.min, children: [
-                              const Icon(Icons.camera_alt_rounded, color: AppTheme.textMuted, size: 16),
-                              const SizedBox(width: 4),
-                              Text('Camera', style: GoogleFonts.poppins(color: AppTheme.textMuted, fontSize: 11)),
-                            ]),
-                          ),
-                        ),
-                        const SizedBox(width: 8),
-                        GestureDetector(
-                          onTap: () => _pickReceipt(),
-                          child: Container(
-                            padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
-                            decoration: BoxDecoration(color: AppTheme.glassWhite, borderRadius: BorderRadius.circular(10), border: Border.all(color: AppTheme.glassBorder)),
-                            child: Row(mainAxisSize: MainAxisSize.min, children: [
-                              const Icon(Icons.photo_library_rounded, color: AppTheme.textMuted, size: 16),
-                              const SizedBox(width: 4),
-                              Text('Gallery', style: GoogleFonts.poppins(color: AppTheme.textMuted, fontSize: 11)),
-                            ]),
-                          ),
-                        ),
-                      ]),
-                      if (_receiptPath != null) ...[
-                        const SizedBox(height: 10),
-                        ClipRRect(
-                          borderRadius: BorderRadius.circular(12),
-                          child: Stack(children: [
-                            Image.file(File(_receiptPath!), height: 120, width: double.infinity, fit: BoxFit.cover),
-                            Positioned(top: 4, right: 4, child: GestureDetector(
-                              onTap: () => setState(() => _receiptPath = null),
-                              child: Container(
-                                padding: const EdgeInsets.all(4),
-                                decoration: const BoxDecoration(color: AppTheme.primaryDark, shape: BoxShape.circle),
-                                child: const Icon(Icons.close_rounded, color: Colors.white, size: 16),
-                              ),
-                            )),
-                          ]),
-                        ),
-                      ],
-                    ]),
-                  ),
-                  const SizedBox(height: 16),
-                  // Save
-                  GestureDetector(
-                    onTap: _saving ? null : _save,
-                    child: Container(
-                      width: double.infinity, padding: const EdgeInsets.symmetric(vertical: 16),
-                      decoration: BoxDecoration(gradient: AppTheme.accentGradient, borderRadius: BorderRadius.circular(20),
-                        boxShadow: [BoxShadow(color: AppTheme.accentPurple.withValues(alpha: 0.3), blurRadius: 16, offset: const Offset(0, 6))]),
-                      child: Center(child: _saving
-                        ? const SizedBox(width: 22, height: 22, child: CircularProgressIndicator(color: Colors.white, strokeWidth: 2.5))
-                        : Text('Save Transaction', style: GoogleFonts.poppins(color: Colors.white, fontSize: 15, fontWeight: FontWeight.w600))),
-                    ),
-                  ),
-                  const SizedBox(height: 32),
+      body: Stack(children: [
+        Container(
+          decoration: const BoxDecoration(gradient: AppTheme.bgGradient),
+          child: SafeArea(
+            child: ScaleTransition(
+              scale: CurvedAnimation(parent: _anim, curve: Curves.easeOutBack),
+              child: Column(children: [
+                // Header
+                Padding(padding: const EdgeInsets.all(16), child: Row(children: [
+                  GlassCard(margin: EdgeInsets.zero, padding: const EdgeInsets.all(8), radius: 12, onTap: () => Navigator.pop(context),
+                    child: const Icon(Icons.arrow_back_rounded, color: AppTheme.textPrimary, size: 22)),
+                  const SizedBox(width: 14),
+                  Text('Add Transaction', style: GoogleFonts.poppins(color: AppTheme.textPrimary, fontSize: 20, fontWeight: FontWeight.w600)),
                 ])),
-              )),
-            ]),
+                // Form
+                Expanded(child: SingleChildScrollView(
+                  physics: const BouncingScrollPhysics(),
+                  padding: const EdgeInsets.symmetric(horizontal: 16),
+                  child: Form(key: _key, child: Column(children: [
+                    // Type toggle
+                    GlassCard(padding: const EdgeInsets.all(4), child: Row(children: [
+                      _toggle('Expense', AppConstants.typeExpense, AppTheme.expenseRed),
+                      const SizedBox(width: 4),
+                      _toggle('Income', AppConstants.typeIncome, AppTheme.incomeGreen),
+                    ])),
+                    const SizedBox(height: 12),
+                    // Title
+                    _field(_title, 'Title', Icons.title_rounded, (v) => v != null && v.trim().isNotEmpty ? null : 'Required'),
+                    const SizedBox(height: 10),
+                    // Amount
+                    _field(_amount, 'Amount', Icons.currency_rupee_rounded, (v) {
+                      if (v == null || v.trim().isEmpty) return 'Required';
+                      final n = double.tryParse(v.trim());
+                      if (n == null || n <= 0) return 'Invalid';
+                      return null;
+                    }, keyboard: const TextInputType.numberWithOptions(decimal: true), big: true),
+                    const SizedBox(height: 10),
+                    // Category
+                    GlassCard(padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 4), child: DropdownButtonFormField<String>(
+                      value: _cat, dropdownColor: AppTheme.primaryMid,
+                      style: GoogleFonts.poppins(color: AppTheme.textPrimary),
+                      decoration: _dec('Category', Icons.category_rounded),
+                      items: _cats.map((c) => DropdownMenuItem(value: c, child: Text(c))).toList(),
+                      onChanged: (v) => setState(() => _cat = v),
+                    )),
+                    const SizedBox(height: 10),
+                    // Account (optional)
+                    Builder(builder: (ctx) {
+                      final accounts = context.watch<AccountProvider>().accounts;
+                      if (accounts.isEmpty) return const SizedBox.shrink();
+                      return Column(children: [
+                        GlassCard(padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 4), child: DropdownButtonFormField<int?>(
+                          initialValue: _accountId, dropdownColor: AppTheme.primaryMid,
+                          style: GoogleFonts.poppins(color: AppTheme.textPrimary),
+                          decoration: _dec('Account (optional)', Icons.account_balance_wallet_rounded),
+                          items: [
+                            DropdownMenuItem<int?>(value: null, child: Text('None', style: GoogleFonts.poppins(color: AppTheme.textMuted))),
+                            ...accounts.map((a) => DropdownMenuItem(value: a.id, child: Text(a.name))),
+                          ],
+                          onChanged: (v) => setState(() => _accountId = v),
+                        )),
+                        const SizedBox(height: 10),
+                      ]);
+                    }),
+                    // Date
+                    GlassCard(onTap: _pickDate, padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 16), child: Row(children: [
+                      const Icon(Icons.calendar_today_rounded, color: AppTheme.textMuted, size: 22),
+                      const SizedBox(width: 12),
+                      Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+                        Text('Date', style: GoogleFonts.poppins(color: AppTheme.textMuted, fontSize: 11)),
+                        Text(Fmt.date(_date), style: GoogleFonts.poppins(color: AppTheme.textPrimary, fontSize: 14, fontWeight: FontWeight.w500)),
+                      ]),
+                      const Spacer(),
+                      const Icon(Icons.chevron_right_rounded, color: AppTheme.textMuted),
+                    ])),
+                    const SizedBox(height: 22),
+                    // Receipt attach
+                    GlassCard(
+                      padding: const EdgeInsets.all(14),
+                      child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+                        Row(children: [
+                          const Icon(Icons.receipt_long_rounded, color: AppTheme.textMuted, size: 20),
+                          const SizedBox(width: 10),
+                          Text('Receipt', style: GoogleFonts.poppins(color: AppTheme.textPrimary, fontSize: 14, fontWeight: FontWeight.w500)),
+                          const Spacer(),
+                          GestureDetector(
+                            onTap: () => _pickReceipt(fromCamera: true),
+                            child: Container(
+                              padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+                              decoration: BoxDecoration(color: AppTheme.glassWhite, borderRadius: BorderRadius.circular(10), border: Border.all(color: AppTheme.glassBorder)),
+                              child: Row(mainAxisSize: MainAxisSize.min, children: [
+                                const Icon(Icons.camera_alt_rounded, color: AppTheme.textMuted, size: 16),
+                                const SizedBox(width: 4),
+                                Text('Camera', style: GoogleFonts.poppins(color: AppTheme.textMuted, fontSize: 11)),
+                              ]),
+                            ),
+                          ),
+                          const SizedBox(width: 8),
+                          GestureDetector(
+                            onTap: () => _pickReceipt(),
+                            child: Container(
+                              padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+                              decoration: BoxDecoration(color: AppTheme.glassWhite, borderRadius: BorderRadius.circular(10), border: Border.all(color: AppTheme.glassBorder)),
+                              child: Row(mainAxisSize: MainAxisSize.min, children: [
+                                const Icon(Icons.photo_library_rounded, color: AppTheme.textMuted, size: 16),
+                                const SizedBox(width: 4),
+                                Text('Gallery', style: GoogleFonts.poppins(color: AppTheme.textMuted, fontSize: 11)),
+                              ]),
+                            ),
+                          ),
+                        ]),
+                        if (_receiptPath != null) ...[
+                          const SizedBox(height: 10),
+                          ClipRRect(
+                            borderRadius: BorderRadius.circular(12),
+                            child: Stack(children: [
+                              Image.file(File(_receiptPath!), height: 120, width: double.infinity, fit: BoxFit.cover),
+                              Positioned(top: 4, right: 4, child: GestureDetector(
+                                onTap: () => setState(() => _receiptPath = null),
+                                child: Container(
+                                  padding: const EdgeInsets.all(4),
+                                  decoration: const BoxDecoration(color: AppTheme.primaryDark, shape: BoxShape.circle),
+                                  child: const Icon(Icons.close_rounded, color: Colors.white, size: 16),
+                                ),
+                              )),
+                            ]),
+                          ),
+                        ],
+                      ]),
+                    ),
+                    const SizedBox(height: 16),
+                    // Save
+                    GestureDetector(
+                      onTap: _saving ? null : _save,
+                      child: Container(
+                        width: double.infinity, padding: const EdgeInsets.symmetric(vertical: 16),
+                        decoration: BoxDecoration(gradient: AppTheme.accentGradient, borderRadius: BorderRadius.circular(20),
+                          boxShadow: [BoxShadow(color: AppTheme.accentPurple.withValues(alpha: 0.3), blurRadius: 16, offset: const Offset(0, 6))]),
+                        child: Center(child: _saving
+                          ? const SizedBox(width: 22, height: 22, child: CircularProgressIndicator(color: Colors.white, strokeWidth: 2.5))
+                          : Text('Save Transaction', style: GoogleFonts.poppins(color: Colors.white, fontSize: 15, fontWeight: FontWeight.w600))),
+                      ),
+                    ),
+                    const SizedBox(height: 32),
+                  ])),
+                )),
+              ]),
+            ),
           ),
         ),
-      ),
+        if (_ocrLoading)
+          Container(
+            color: Colors.black54,
+            child: Center(
+              child: GlassCard(
+                padding: const EdgeInsets.symmetric(horizontal: 28, vertical: 24),
+                child: Column(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    const CircularProgressIndicator(color: AppTheme.accentPurple),
+                    const SizedBox(height: 16),
+                    Text('Analyzing Receipt with AI OCR...', style: GoogleFonts.poppins(color: AppTheme.textPrimary, fontSize: 14, fontWeight: FontWeight.w500)),
+                  ],
+                ),
+              ),
+            ),
+          ),
+      ]),
     );
   }
 

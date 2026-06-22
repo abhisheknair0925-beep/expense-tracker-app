@@ -73,6 +73,12 @@ class DatabaseService {
             await db.execute('ALTER TABLE $t ADD COLUMN isSynced INTEGER NOT NULL DEFAULT 0');
           }
         }
+        if (oldV < 7) {
+          // Add profileId column to all tables
+          for (final t in [AppConstants.tableTxn, AppConstants.tableAccounts, AppConstants.tableBills, AppConstants.tableBudgets]) {
+            await db.execute('ALTER TABLE $t ADD COLUMN profileId TEXT');
+          }
+        }
       },
     );
   }
@@ -83,6 +89,7 @@ class DatabaseService {
         id INTEGER PRIMARY KEY AUTOINCREMENT,
         firestoreId TEXT,
         userId TEXT,
+        profileId TEXT,
         title TEXT NOT NULL,
         amount REAL NOT NULL,
         type TEXT NOT NULL,
@@ -99,6 +106,7 @@ class DatabaseService {
         id INTEGER PRIMARY KEY AUTOINCREMENT,
         firestoreId TEXT,
         userId TEXT,
+        profileId TEXT,
         name TEXT NOT NULL,
         type TEXT NOT NULL,
         balance REAL NOT NULL DEFAULT 0,
@@ -113,6 +121,7 @@ class DatabaseService {
         id INTEGER PRIMARY KEY AUTOINCREMENT,
         firestoreId TEXT,
         userId TEXT,
+        profileId TEXT,
         title TEXT NOT NULL,
         amount REAL NOT NULL,
         category TEXT NOT NULL,
@@ -128,6 +137,7 @@ class DatabaseService {
         id INTEGER PRIMARY KEY AUTOINCREMENT,
         firestoreId TEXT,
         userId TEXT,
+        profileId TEXT,
         category TEXT NOT NULL,
         budgetLimit REAL NOT NULL,
         month INTEGER NOT NULL,
@@ -147,9 +157,14 @@ class DatabaseService {
     return db.insert(AppConstants.tableTxn, t.toMap());
   }
 
-  Future<List<Txn>> getAll() async {
+  Future<List<Txn>> getAll(String? profileId) async {
     final db = await database;
-    final rows = await db.query(AppConstants.tableTxn, orderBy: 'date DESC');
+    final rows = await db.query(
+      AppConstants.tableTxn,
+      where: profileId == null ? 'profileId IS NULL' : 'profileId = ?',
+      whereArgs: profileId == null ? null : [profileId],
+      orderBy: 'date DESC',
+    );
     return rows.map(Txn.fromMap).toList();
   }
 
@@ -184,9 +199,13 @@ class DatabaseService {
     return db.insert(AppConstants.tableAccounts, a.toMap());
   }
 
-  Future<List<Account>> getAccounts() async {
+  Future<List<Account>> getAccounts(String? profileId) async {
     final db = await database;
-    final rows = await db.query(AppConstants.tableAccounts);
+    final rows = await db.query(
+      AppConstants.tableAccounts,
+      where: profileId == null ? 'profileId IS NULL' : 'profileId = ?',
+      whereArgs: profileId == null ? null : [profileId],
+    );
     return rows.map(Account.fromMap).toList();
   }
 
@@ -221,9 +240,13 @@ class DatabaseService {
     return db.insert(AppConstants.tableBills, b.toMap());
   }
 
-  Future<List<Bill>> getBills() async {
+  Future<List<Bill>> getBills(String? profileId) async {
     final db = await database;
-    final rows = await db.query(AppConstants.tableBills);
+    final rows = await db.query(
+      AppConstants.tableBills,
+      where: profileId == null ? 'profileId IS NULL' : 'profileId = ?',
+      whereArgs: profileId == null ? null : [profileId],
+    );
     return rows.map(Bill.fromMap).toList();
   }
 
@@ -258,9 +281,13 @@ class DatabaseService {
     return db.insert(AppConstants.tableBudgets, b.toMap());
   }
 
-  Future<List<Budget>> getBudgets() async {
+  Future<List<Budget>> getBudgets(String? profileId) async {
     final db = await database;
-    final rows = await db.query(AppConstants.tableBudgets);
+    final rows = await db.query(
+      AppConstants.tableBudgets,
+      where: profileId == null ? 'profileId IS NULL' : 'profileId = ?',
+      whereArgs: profileId == null ? null : [profileId],
+    );
     return rows.map(Budget.fromMap).toList();
   }
 

@@ -3,6 +3,7 @@ class Bill {
   final int? id;
   final String? firestoreId;
   final String? userId;
+  final String? profileId;
   final String title;
   final double amount;
   final String category;
@@ -13,7 +14,7 @@ class Bill {
   final bool isSynced;
 
   Bill({
-    this.id, this.firestoreId, this.userId,
+    this.id, this.firestoreId, this.userId, this.profileId,
     required this.title, required this.amount, required this.category,
     required this.dueDate, this.repeat = 'monthly', this.isPaid = false,
     DateTime? updatedAt, this.isSynced = false,
@@ -27,6 +28,7 @@ class Bill {
         id: m['id'] as int?,
         firestoreId: m['firestoreId'] as String?,
         userId: m['userId'] as String?,
+        profileId: m['profileId'] as String?,
         title: m['title'] as String,
         amount: (m['amount'] as num).toDouble(),
         category: m['category'] as String,
@@ -40,19 +42,21 @@ class Bill {
   Map<String, dynamic> toMap() => {
         if (id != null) 'id': id,
         'firestoreId': firestoreId, 'userId': userId,
+        'profileId': profileId,
         'title': title, 'amount': amount, 'category': category,
         'dueDate': dueDate.toIso8601String(), 'repeat': repeat, 'isPaid': isPaid ? 1 : 0,
         'updatedAt': updatedAt.toIso8601String(), 'isSynced': isSynced ? 1 : 0,
       };
 
   Map<String, dynamic> toFirestore() => {
+        'profileId': profileId,
         'title': title, 'amount': amount, 'category': category,
         'dueDate': dueDate.toIso8601String(), 'repeat': repeat, 'isPaid': isPaid,
         'updatedAt': updatedAt.toIso8601String(),
       };
 
-  Bill copyWith({int? id, bool? isPaid, DateTime? dueDate, String? firestoreId, String? userId, DateTime? updatedAt, bool? isSynced}) => Bill(
-        id: id ?? this.id, firestoreId: firestoreId ?? this.firestoreId, userId: userId ?? this.userId,
+  Bill copyWith({int? id, bool? isPaid, DateTime? dueDate, String? firestoreId, String? userId, String? profileId, DateTime? updatedAt, bool? isSynced}) => Bill(
+        id: id ?? this.id, firestoreId: firestoreId ?? this.firestoreId, userId: userId ?? this.userId, profileId: profileId ?? this.profileId,
         title: title, amount: amount, category: category,
         dueDate: dueDate ?? this.dueDate, repeat: repeat, isPaid: isPaid ?? this.isPaid,
         updatedAt: updatedAt ?? this.updatedAt, isSynced: isSynced ?? this.isSynced,

@@ -3,6 +3,7 @@ class Txn {
   final int? id;
   final String? firestoreId;
   final String? userId;
+  final String? profileId;
   final String title;
   final double amount;
   final String type; // 'income' | 'expense'
@@ -17,6 +18,7 @@ class Txn {
     this.id,
     this.firestoreId,
     this.userId,
+    this.profileId,
     required this.title,
     required this.amount,
     required this.type,
@@ -35,6 +37,7 @@ class Txn {
         id: m['id'] as int?,
         firestoreId: m['firestoreId'] as String?,
         userId: m['userId'] as String?,
+        profileId: m['profileId'] as String?,
         title: m['title'] as String,
         amount: (m['amount'] as num).toDouble(),
         type: m['type'] as String,
@@ -50,6 +53,7 @@ class Txn {
         if (id != null) 'id': id,
         'firestoreId': firestoreId,
         'userId': userId,
+        'profileId': profileId,
         'title': title,
         'amount': amount,
         'type': type,
@@ -63,6 +67,7 @@ class Txn {
 
   /// Convert to Firestore-safe map (no SQLite id, no isSynced flag).
   Map<String, dynamic> toFirestore() => {
+        'profileId': profileId,
         'title': title,
         'amount': amount,
         'type': type,
@@ -72,6 +77,6 @@ class Txn {
         'updatedAt': updatedAt.toIso8601String(),
       };
 
-  Txn copyWith({int? id, int? accountId, String? receiptPath, String? firestoreId, String? userId, DateTime? updatedAt, bool? isSynced}) =>
-      Txn(id: id ?? this.id, firestoreId: firestoreId ?? this.firestoreId, userId: userId ?? this.userId, title: title, amount: amount, type: type, category: category, accountId: accountId ?? this.accountId, receiptPath: receiptPath ?? this.receiptPath, date: date, updatedAt: updatedAt ?? this.updatedAt, isSynced: isSynced ?? this.isSynced);
+  Txn copyWith({int? id, int? accountId, String? receiptPath, String? firestoreId, String? userId, String? profileId, DateTime? updatedAt, bool? isSynced}) =>
+      Txn(id: id ?? this.id, firestoreId: firestoreId ?? this.firestoreId, userId: userId ?? this.userId, profileId: profileId ?? this.profileId, title: title, amount: amount, type: type, category: category, accountId: accountId ?? this.accountId, receiptPath: receiptPath ?? this.receiptPath, date: date, updatedAt: updatedAt ?? this.updatedAt, isSynced: isSynced ?? this.isSynced);
 }

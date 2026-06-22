@@ -53,22 +53,33 @@ class App extends StatelessWidget {
           create: (context) => TransactionProvider(),
           update: (context, userProvider, previous) {
             final p = previous ?? TransactionProvider();
-            // Optional: Trigger reload if profile changed
-            // p.loadForProfile(userProvider.selectedProfile?.profileId);
+            p.loadForProfile(userProvider.selectedProfile?.profileId);
             return p;
           },
         ),
         ChangeNotifierProxyProvider<UserProvider, AccountProvider>(
           create: (context) => AccountProvider(),
-          update: (context, userProvider, previous) => previous ?? AccountProvider(),
+          update: (context, userProvider, previous) {
+            final p = previous ?? AccountProvider();
+            p.loadForProfile(userProvider.selectedProfile?.profileId);
+            return p;
+          },
         ),
         ChangeNotifierProxyProvider<UserProvider, BillProvider>(
           create: (context) => BillProvider(),
-          update: (context, userProvider, previous) => previous ?? BillProvider(),
+          update: (context, userProvider, previous) {
+            final p = previous ?? BillProvider();
+            p.loadForProfile(userProvider.selectedProfile?.profileId);
+            return p;
+          },
         ),
         ChangeNotifierProxyProvider<UserProvider, BudgetProvider>(
           create: (context) => BudgetProvider(),
-          update: (context, userProvider, previous) => previous ?? BudgetProvider(),
+          update: (context, userProvider, previous) {
+            final p = previous ?? BudgetProvider();
+            p.loadForProfile(userProvider.selectedProfile?.profileId);
+            return p;
+          },
         ),
         ChangeNotifierProvider(create: (_) => InsightsProvider()),
         ChangeNotifierProvider(create: (_) => ReportProvider()),

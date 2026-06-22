@@ -4,6 +4,9 @@ import '../models/user_model.dart';
 import '../models/profile_model.dart';
 import '../services/user_service.dart';
 
+enum OnboardingPurpose { personal, business, both }
+
+
 class UserProvider extends ChangeNotifier {
   final _userService = UserService.instance;
 
@@ -40,11 +43,11 @@ class UserProvider extends ChangeNotifier {
     }
   }
 
-  /// Completes the onboarding process by creating the user profile and the first sub-profile.
+  /// Completes the onboarding process by creating the user profile and the initial sub-profile(s).
   Future<void> completeOnboarding({
     required String userId,
     required String name,
-    required ProfileType initialProfileType,
+    required OnboardingPurpose purpose,
     String? email,
     String? phone,
     String? photoUrl,
@@ -68,16 +71,30 @@ class UserProvider extends ChangeNotifier {
       await _userService.createUser(newUser);
       _userProfile = newUser;
 
-      // Create initial profile
-      final firstProfile = ProfileModel(
-        profileId: const Uuid().v4(),
-        profileType: initialProfileType,
-        createdAt: DateTime.now(),
-      );
+      final newProfiles = <ProfileModel>[];
 
-      await _userService.createProfile(userId, firstProfile);
-      _profiles = [firstProfile];
-      _selectedProfile = firstProfile;
+      // Add profiles based on purpose
+      if (purpose == OnboardingPurpose.personal || purpose == OnboardingPurpose.both) {
+        newProfiles.add(ProfileModel(
+          profileId: const Uuid().v4(),
+          profileType: ProfileType.personal,
+          createdAt: DateTime.now(),
+        ));
+      }
+      if (purpose == OnboardingPurpose.business || purpose == OnboardingPurpose.both) {
+        newProfiles.add(ProfileModel(
+          profileId: const Uuid().v4(),
+          profileType: ProfileType.business,
+          createdAt: DateTime.now(),
+        ));
+      }
+
+      for (final profile in newProfiles) {
+        await _userService.createProfile(userId, profile);
+      }
+
+      _profiles = newProfiles;
+      _selectedProfile = newProfiles.first;
 
     } catch (e) {
       debugPrint('UserProvider: Onboarding failed: $e');

@@ -3,19 +3,21 @@ class Account {
   final int? id;
   final String? firestoreId;
   final String? userId;
+  final String? profileId;
   final String name;
   final String type; // 'bank' | 'cash' | 'wallet'
   final double balance;
   final DateTime updatedAt;
   final bool isSynced;
 
-  Account({this.id, this.firestoreId, this.userId, required this.name, required this.type, this.balance = 0, DateTime? updatedAt, this.isSynced = false})
+  Account({this.id, this.firestoreId, this.userId, this.profileId, required this.name, required this.type, this.balance = 0, DateTime? updatedAt, this.isSynced = false})
       : updatedAt = updatedAt ?? DateTime.now();
 
   factory Account.fromMap(Map<String, dynamic> m) => Account(
         id: m['id'] as int?,
         firestoreId: m['firestoreId'] as String?,
         userId: m['userId'] as String?,
+        profileId: m['profileId'] as String?,
         name: m['name'] as String,
         type: m['type'] as String,
         balance: (m['balance'] as num).toDouble(),
@@ -27,6 +29,7 @@ class Account {
         if (id != null) 'id': id,
         'firestoreId': firestoreId,
         'userId': userId,
+        'profileId': profileId,
         'name': name,
         'type': type,
         'balance': balance,
@@ -35,14 +38,15 @@ class Account {
       };
 
   Map<String, dynamic> toFirestore() => {
+        'profileId': profileId,
         'name': name,
         'type': type,
         'balance': balance,
         'updatedAt': updatedAt.toIso8601String(),
       };
 
-  Account copyWith({int? id, double? balance, String? firestoreId, String? userId, DateTime? updatedAt, bool? isSynced}) => Account(
-        id: id ?? this.id, firestoreId: firestoreId ?? this.firestoreId, userId: userId ?? this.userId,
+  Account copyWith({int? id, double? balance, String? firestoreId, String? userId, String? profileId, DateTime? updatedAt, bool? isSynced}) => Account(
+        id: id ?? this.id, firestoreId: firestoreId ?? this.firestoreId, userId: userId ?? this.userId, profileId: profileId ?? this.profileId,
         name: name, type: type, balance: balance ?? this.balance,
         updatedAt: updatedAt ?? this.updatedAt, isSynced: isSynced ?? this.isSynced,
       );

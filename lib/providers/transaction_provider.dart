@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import '../models/transaction_model.dart';
 import '../services/database_service.dart';
+import '../services/sync_service.dart';
 
 /// Manages all transaction state — list, totals, analytics.
 class TransactionProvider extends ChangeNotifier {
@@ -10,11 +11,13 @@ class TransactionProvider extends ChangeNotifier {
   bool _loading = false;
   int _month = DateTime.now().month;
   int _year = DateTime.now().year;
+  String? _profileId;
 
   List<Txn> get all => _all;
   bool get loading => _loading;
   int get month => _month;
   int get year => _year;
+  String? get profileId => _profileId;
 
   // ─── Search & Filter state ────────────────────────────────────────
   String _search = '';
@@ -79,24 +82,32 @@ class TransactionProvider extends ChangeNotifier {
 
   // ─── Actions ──────────────────────────────────────────────────────
 
+  Future<void> loadForProfile(String? profileId) async {
+    _profileId = profileId;
+    await load();
+  }
+
   Future<void> load() async {
     _loading = true;
     notifyListeners();
-    _all = await _db.getAll();
+    _all = await _db.getAll(_profileId);
     _loading = false;
     notifyListeners();
   }
 
   Future<void> add(Txn t) async {
-    final id = await _db.insert(t);
-    _all.insert(0, t.copyWith(id: id));
+    final tWithProfile = t.copyWith(profileId: _profileId);
+    final id = await _db.insert(tWithProfile);
+    _all.insert(0, tWithProfile.copyWith(id: id));
     notifyListeners();
+    SyncService.instance.syncAll();
   }
 
   Future<void> remove(int id) async {
     await _db.delete(id);
     _all.removeWhere((t) => t.id == id);
     notifyListeners();
+    SyncService.instance.syncAll();
   }
 
   void prevMonth() {

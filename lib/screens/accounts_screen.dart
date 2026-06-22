@@ -21,9 +21,20 @@ class AccountsScreen extends StatelessWidget {
           slivers: [
             // Header
             SliverToBoxAdapter(child: Padding(
-              padding: const EdgeInsets.fromLTRB(20, 8, 16, 4),
+              padding: const EdgeInsets.fromLTRB(16, 8, 16, 4),
               child: Row(mainAxisAlignment: MainAxisAlignment.spaceBetween, children: [
-                Text('Accounts', style: GoogleFonts.poppins(color: AppTheme.textPrimary, fontSize: 24, fontWeight: FontWeight.w700)),
+                Row(children: [
+                  if (Navigator.canPop(context)) ...[
+                    GlassCard(
+                      margin: const EdgeInsets.only(right: 12),
+                      padding: const EdgeInsets.all(8),
+                      radius: 12,
+                      onTap: () => Navigator.pop(context),
+                      child: const Icon(Icons.arrow_back_rounded, color: AppTheme.textPrimary, size: 22),
+                    ),
+                  ],
+                  Text('Accounts', style: GoogleFonts.poppins(color: AppTheme.textPrimary, fontSize: 24, fontWeight: FontWeight.w700)),
+                ]),
                 GlassCard(
                   margin: EdgeInsets.zero, padding: const EdgeInsets.all(10), radius: 14,
                   onTap: () => _showAdd(context),

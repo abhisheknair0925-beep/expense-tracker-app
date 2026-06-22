@@ -12,6 +12,9 @@ import '../features/profile/profile_switch_screen.dart';
 import '../features/auth/phone_input_screen.dart';
 import '../models/profile_model.dart';
 import '../widgets/glass_card.dart';
+import 'bills_screen.dart';
+import 'budget_screen.dart';
+import 'accounts_screen.dart';
 
 /// Settings screen — export, currency, security, sync.
 class SettingsScreen extends StatefulWidget {
@@ -57,14 +60,34 @@ class _SettingsScreenState extends State<SettingsScreen> {
               ]),
             )),
 
-            // ─── Export ─────────────────────────────────────────────
-            SliverToBoxAdapter(child: _section('Export & Reports')),
+            // ─── Financial Tools ────────────────────────────────────
+            SliverToBoxAdapter(child: _section('Financial Tools')),
             SliverToBoxAdapter(child: Padding(
               padding: const EdgeInsets.symmetric(horizontal: 16),
               child: Column(children: [
-                _tile(Icons.description_rounded, 'Detailed Reports', 'Access professional statements', AppTheme.accentBlue, () {
-                   // Navigate to reports tab (index 3 in ShellScreen)
-                   // For now just close or notify
+                _tile(Icons.receipt_long_rounded, 'Bill Reminders & Subs', 'Manage recurring bills and detect subscriptions', AppTheme.accentPurple, () {
+                  Navigator.push(context, MaterialPageRoute(builder: (_) => Scaffold(
+                    body: Container(
+                      decoration: const BoxDecoration(gradient: AppTheme.bgGradient),
+                      child: const SafeArea(child: BillsScreen()),
+                    ),
+                  )));
+                }),
+                _tile(Icons.track_changes_rounded, 'Budgets & Limits', 'Set and monitor monthly category budgets', AppTheme.accentBlue, () {
+                  Navigator.push(context, MaterialPageRoute(builder: (_) => Scaffold(
+                    body: Container(
+                      decoration: const BoxDecoration(gradient: AppTheme.bgGradient),
+                      child: const SafeArea(child: BudgetScreen()),
+                    ),
+                  )));
+                }),
+                _tile(Icons.account_balance_wallet_rounded, 'Manage Accounts', 'View and manage cash, bank, or credit wallets', AppTheme.incomeGreen, () {
+                  Navigator.push(context, MaterialPageRoute(builder: (_) => Scaffold(
+                    body: Container(
+                      decoration: const BoxDecoration(gradient: AppTheme.bgGradient),
+                      child: const SafeArea(child: AccountsScreen()),
+                    ),
+                  )));
                 }),
               ]),
             )),

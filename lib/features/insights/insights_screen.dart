@@ -10,6 +10,7 @@ import 'widgets/insight_card.dart';
 import 'widgets/trend_chart.dart';
 import 'widgets/category_chart.dart';
 import '../../widgets/glass_card.dart';
+import '../../screens/assistant_screen.dart';
 
 class InsightsScreen extends StatefulWidget {
   const InsightsScreen({super.key});
@@ -76,6 +77,52 @@ class _InsightsScreenState extends State<InsightsScreen> {
                               icon: const Icon(Icons.refresh_rounded, color: AppTheme.textMuted),
                             ),
                           ],
+                        ),
+                      ),
+                    ),
+
+                    // AI Assistant Card
+                    SliverToBoxAdapter(
+                      child: Padding(
+                        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+                        child: GlassCard(
+                          onTap: () {
+                            Navigator.push(
+                              context,
+                              MaterialPageRoute(builder: (_) => const AssistantScreen()),
+                            );
+                          },
+                          padding: const EdgeInsets.all(18),
+                          margin: EdgeInsets.zero,
+                          child: Row(
+                            children: [
+                              Container(
+                                width: 50, height: 50,
+                                decoration: BoxDecoration(
+                                  gradient: AppTheme.accentGradient,
+                                  borderRadius: BorderRadius.circular(16),
+                                ),
+                                child: const Icon(Icons.auto_awesome_rounded, color: Colors.white, size: 24),
+                              ),
+                              const SizedBox(width: 14),
+                              Expanded(
+                                child: Column(
+                                  crossAxisAlignment: CrossAxisAlignment.start,
+                                  children: [
+                                    Text(
+                                      'AI Finance Assistant',
+                                      style: GoogleFonts.poppins(color: AppTheme.textPrimary, fontSize: 15, fontWeight: FontWeight.w600),
+                                    ),
+                                    Text(
+                                      'Chat with Gemini to analyze your spending',
+                                      style: GoogleFonts.poppins(color: AppTheme.textMuted, fontSize: 11),
+                                    ),
+                                  ],
+                                ),
+                              ),
+                              const Icon(Icons.chevron_right_rounded, color: AppTheme.textMuted),
+                            ],
+                          ),
                         ),
                       ),
                     ),

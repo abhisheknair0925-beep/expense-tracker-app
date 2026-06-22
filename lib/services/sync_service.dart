@@ -120,6 +120,7 @@ class SyncService {
         // New from cloud — insert locally
         await _db.insert(Txn(
           firestoreId: fid, userId: _uid,
+          profileId: data['profileId'] as String?,
           title: data['title'] as String,
           amount: (data['amount'] as num).toDouble(),
           type: data['type'] as String,
@@ -134,6 +135,7 @@ class SyncService {
         // Cloud is newer — update local
         await _db.updateTxn(Txn(
           id: local.id, firestoreId: fid, userId: _uid,
+          profileId: data['profileId'] as String?,
           title: data['title'] as String,
           amount: (data['amount'] as num).toDouble(),
           type: data['type'] as String,
@@ -161,6 +163,7 @@ class SyncService {
       if (local == null) {
         await _db.insertAccount(Account(
           firestoreId: fid, userId: _uid,
+          profileId: data['profileId'] as String?,
           name: data['name'] as String,
           type: data['type'] as String,
           balance: (data['balance'] as num).toDouble(),
@@ -170,6 +173,7 @@ class SyncService {
       } else if (remoteUpdated.isAfter(local.updatedAt)) {
         await _db.updateAccount(Account(
           id: local.id, firestoreId: fid, userId: _uid,
+          profileId: data['profileId'] as String?,
           name: data['name'] as String,
           type: data['type'] as String,
           balance: (data['balance'] as num).toDouble(),
@@ -192,6 +196,7 @@ class SyncService {
       if (local == null) {
         await _db.insertBill(Bill(
           firestoreId: fid, userId: _uid,
+          profileId: data['profileId'] as String?,
           title: data['title'] as String,
           amount: (data['amount'] as num).toDouble(),
           category: data['category'] as String,
@@ -204,6 +209,7 @@ class SyncService {
       } else if (remoteUpdated.isAfter(local.updatedAt)) {
         await _db.updateBill(Bill(
           id: local.id, firestoreId: fid, userId: _uid,
+          profileId: data['profileId'] as String?,
           title: data['title'] as String,
           amount: (data['amount'] as num).toDouble(),
           category: data['category'] as String,
@@ -229,6 +235,7 @@ class SyncService {
       if (local == null) {
         await _db.insertBudget(Budget(
           firestoreId: fid, userId: _uid,
+          profileId: data['profileId'] as String?,
           category: data['category'] as String,
           limit: (data['budgetLimit'] as num).toDouble(),
           month: data['month'] as int,
@@ -239,6 +246,7 @@ class SyncService {
       } else if (remoteUpdated.isAfter(local.updatedAt)) {
         await _db.updateBudget(Budget(
           id: local.id, firestoreId: fid, userId: _uid,
+          profileId: data['profileId'] as String?,
           category: data['category'] as String,
           limit: (data['budgetLimit'] as num).toDouble(),
           month: data['month'] as int,

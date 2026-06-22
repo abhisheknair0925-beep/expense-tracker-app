@@ -3,6 +3,7 @@ class Budget {
   final int? id;
   final String? firestoreId;
   final String? userId;
+  final String? profileId;
   final String category;
   final double limit;
   final int month;
@@ -10,13 +11,14 @@ class Budget {
   final DateTime updatedAt;
   final bool isSynced;
 
-  Budget({this.id, this.firestoreId, this.userId, required this.category, required this.limit, required this.month, required this.year, DateTime? updatedAt, this.isSynced = false})
+  Budget({this.id, this.firestoreId, this.userId, this.profileId, required this.category, required this.limit, required this.month, required this.year, DateTime? updatedAt, this.isSynced = false})
       : updatedAt = updatedAt ?? DateTime.now();
 
   factory Budget.fromMap(Map<String, dynamic> m) => Budget(
         id: m['id'] as int?,
         firestoreId: m['firestoreId'] as String?,
         userId: m['userId'] as String?,
+        profileId: m['profileId'] as String?,
         category: m['category'] as String,
         limit: (m['budgetLimit'] as num).toDouble(),
         month: m['month'] as int,
@@ -28,15 +30,17 @@ class Budget {
   Map<String, dynamic> toMap() => {
         if (id != null) 'id': id,
         'firestoreId': firestoreId, 'userId': userId,
+        'profileId': profileId,
         'category': category, 'budgetLimit': limit, 'month': month, 'year': year,
         'updatedAt': updatedAt.toIso8601String(), 'isSynced': isSynced ? 1 : 0,
       };
 
   Map<String, dynamic> toFirestore() => {
+        'profileId': profileId,
         'category': category, 'budgetLimit': limit, 'month': month, 'year': year,
         'updatedAt': updatedAt.toIso8601String(),
       };
 
-  Budget copyWith({int? id, double? limit, String? firestoreId, String? userId, DateTime? updatedAt, bool? isSynced}) =>
-      Budget(id: id ?? this.id, firestoreId: firestoreId ?? this.firestoreId, userId: userId ?? this.userId, category: category, limit: limit ?? this.limit, month: month, year: year, updatedAt: updatedAt ?? this.updatedAt, isSynced: isSynced ?? this.isSynced);
+  Budget copyWith({int? id, double? limit, String? firestoreId, String? userId, String? profileId, DateTime? updatedAt, bool? isSynced}) =>
+      Budget(id: id ?? this.id, firestoreId: firestoreId ?? this.firestoreId, userId: userId ?? this.userId, profileId: profileId ?? this.profileId, category: category, limit: limit ?? this.limit, month: month, year: year, updatedAt: updatedAt ?? this.updatedAt, isSynced: isSynced ?? this.isSynced);
 }

@@ -7,7 +7,7 @@ class AppConstants {
   static const String appName = 'Expense Tracker';
   static const String currency = '₹';
   static const String dbName = 'expense_tracker.db';
-  static const int dbVersion = 6;
+  static const int dbVersion = 7;
   static const String tableTxn = 'transactions';
   static const String tableAccounts = 'accounts';
   static const String tableBills = 'bills';

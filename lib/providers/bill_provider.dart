@@ -2,21 +2,29 @@ import 'package:flutter/material.dart';
 import '../models/bill_model.dart';
 import '../services/database_service.dart';
 import '../services/notification_service.dart';
+import '../services/sync_service.dart';
 
 /// Manages bill reminders state — CRUD + notification scheduling.
 class BillProvider extends ChangeNotifier {
   final _db = DatabaseService.instance;
   final _notif = NotificationService.instance;
   List<Bill> _list = [];
+  String? _profileId;
 
   List<Bill> get bills => _list;
   List<Bill> get overdue => _list.where((b) => b.isOverdue).toList();
   List<Bill> get dueSoon => _list.where((b) => b.isDueSoon).toList();
   List<Bill> get unpaid => _list.where((b) => !b.isPaid).toList();
   double get totalUpcoming => unpaid.fold(0.0, (s, b) => s + b.amount);
+  String? get profileId => _profileId;
+
+  Future<void> loadForProfile(String? profileId) async {
+    _profileId = profileId;
+    await load();
+  }
 
   Future<void> load() async {
-    _list = await _db.getBills();
+    _list = await _db.getBills(_profileId);
     // Sort: overdue first, then by due date
     _list.sort((a, b) {
       if (a.isOverdue && !b.isOverdue) return -1;
@@ -29,8 +37,9 @@ class BillProvider extends ChangeNotifier {
   }
 
   Future<void> add(Bill b) async {
-    final id = await _db.insertBill(b);
-    final bill = b.copyWith(id: id);
+    final bWithProfile = b.copyWith(profileId: _profileId);
+    final id = await _db.insertBill(bWithProfile);
+    final bill = bWithProfile.copyWith(id: id);
     _list.add(bill);
     // Schedule notification
     await _notif.scheduleBillReminder(
@@ -40,6 +49,7 @@ class BillProvider extends ChangeNotifier {
       dueDate: b.dueDate,
     );
     notifyListeners();
+    SyncService.instance.syncAll();
   }
 
   Future<void> togglePaid(int id) async {
@@ -50,6 +60,7 @@ class BillProvider extends ChangeNotifier {
     _list[i] = updated;
     if (updated.isPaid) await _notif.cancel(id);
     notifyListeners();
+    SyncService.instance.syncAll();
   }
 
   Future<void> remove(int id) async {
@@ -57,5 +68,6 @@ class BillProvider extends ChangeNotifier {
     await _notif.cancel(id);
     _list.removeWhere((b) => b.id == id);
     notifyListeners();
+    SyncService.instance.syncAll();
   }
 }
