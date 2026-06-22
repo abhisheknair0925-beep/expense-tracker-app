@@ -12,6 +12,8 @@ import 'providers/transaction_provider.dart';
 import 'features/insights/providers/insights_provider.dart';
 import 'features/reports/providers/report_provider.dart';
 import 'providers/session_provider.dart';
+import 'providers/goal_provider.dart';
+import 'providers/group_provider.dart';
 import 'screens/lock_screen.dart';
 import 'screens/login_screen.dart';
 import 'screens/shell_screen.dart';
@@ -77,6 +79,22 @@ class App extends StatelessWidget {
           create: (context) => BudgetProvider(),
           update: (context, userProvider, previous) {
             final p = previous ?? BudgetProvider();
+            p.loadForProfile(userProvider.selectedProfile?.profileId);
+            return p;
+          },
+        ),
+        ChangeNotifierProxyProvider<UserProvider, GoalProvider>(
+          create: (context) => GoalProvider(),
+          update: (context, userProvider, previous) {
+            final p = previous ?? GoalProvider();
+            p.loadForProfile(userProvider.selectedProfile?.profileId);
+            return p;
+          },
+        ),
+        ChangeNotifierProxyProvider<UserProvider, GroupProvider>(
+          create: (context) => GroupProvider(),
+          update: (context, userProvider, previous) {
+            final p = previous ?? GroupProvider();
             p.loadForProfile(userProvider.selectedProfile?.profileId);
             return p;
           },

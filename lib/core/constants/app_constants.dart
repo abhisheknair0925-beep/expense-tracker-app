@@ -7,11 +7,14 @@ class AppConstants {
   static const String appName = 'Expense Tracker';
   static const String currency = '₹';
   static const String dbName = 'expense_tracker.db';
-  static const int dbVersion = 8;
+  static const int dbVersion = 10;
   static const String tableTxn = 'transactions';
   static const String tableAccounts = 'accounts';
   static const String tableBills = 'bills';
   static const String tableBudgets = 'budgets';
+  static const String tableGoals = 'goals';
+  static const String tableGroups = 'groups';
+  static const String tableGroupExpenses = 'group_expenses';
 
   // ─── Bill Categories ─────────────────────────────────────────────
   static const List<String> billCategories = [

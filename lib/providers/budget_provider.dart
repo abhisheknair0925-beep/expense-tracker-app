@@ -2,6 +2,8 @@ import 'package:flutter/material.dart';
 import '../models/budget_model.dart';
 import '../services/database_service.dart';
 import '../services/sync_service.dart';
+import '../services/notification_service.dart';
+import '../utils/formatters.dart';
 
 /// Manages category budgets — CRUD + overspending checks.
 class BudgetProvider extends ChangeNotifier {
@@ -63,9 +65,34 @@ class BudgetProvider extends ChangeNotifier {
 
     final bWithProfile = b.copyWith(profileId: _profileId);
     final id = await _db.insertBudget(bWithProfile);
-    _list.add(bWithProfile.copyWith(id: id));
+    final savedBudget = bWithProfile.copyWith(id: id);
+    _list.add(savedBudget);
     notifyListeners();
     SyncService.instance.syncAll();
+
+    // Check if new budget is already exceeded or near limit
+    try {
+      final txns = await _db.getAll(_profileId);
+      final spent = txns
+          .where((x) => !x.isIncome && x.category == savedBudget.category && x.date.month == savedBudget.month && x.date.year == savedBudget.year)
+          .fold(0.0, (s, x) => s + x.amount);
+      
+      if (spent >= savedBudget.limit) {
+        await NotificationService.instance.showNow(
+          id: savedBudget.category.hashCode + savedBudget.month + savedBudget.year,
+          title: '🚨 Budget Exceeded for ${savedBudget.category}',
+          body: 'You have spent ${Fmt.money(spent)} which exceeds your new monthly limit of ${Fmt.money(savedBudget.limit)}.',
+        );
+      } else if (spent >= savedBudget.limit * 0.8) {
+        await NotificationService.instance.showNow(
+          id: savedBudget.category.hashCode + savedBudget.month + savedBudget.year + 1,
+          title: '⚠️ 80% Budget Warning for ${savedBudget.category}',
+          body: 'You have reached 80% of your new ${savedBudget.category} budget. Spent: ${Fmt.money(spent)} / Limit: ${Fmt.money(savedBudget.limit)}.',
+        );
+      }
+    } catch (e) {
+      debugPrint('Error checking budget on add: $e');
+    }
   }
 
   Future<void> remove(int id) async {

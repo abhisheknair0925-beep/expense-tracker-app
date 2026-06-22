@@ -1,3 +1,4 @@
+import 'dart:io';
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
 import '../core/constants/app_constants.dart';
@@ -18,6 +19,7 @@ class TransactionTile extends StatelessWidget {
     final color = txn.isIncome ? AppTheme.incomeGreen : AppTheme.expenseRed;
     final icon = AppConstants.catIcons[txn.category] ?? Icons.more_horiz_rounded;
     final catColor = AppConstants.catColors[txn.category] ?? color;
+    final hasReceipt = txn.receiptPath != null && txn.receiptPath!.isNotEmpty;
 
     return Dismissible(
       key: Key('txn_${txn.id}'),
@@ -34,6 +36,7 @@ class TransactionTile extends StatelessWidget {
         child: const Icon(Icons.delete_rounded, color: AppTheme.expenseRed),
       ),
       child: GlassCard(
+        onTap: hasReceipt ? () => _showReceiptViewer(context, txn.receiptPath!) : null,
         padding: const EdgeInsets.all(14),
         child: Row(children: [
           Container(
@@ -49,9 +52,19 @@ class TransactionTile extends StatelessWidget {
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                Text(txn.title,
-                    style: GoogleFonts.poppins(color: AppTheme.textPrimary, fontSize: 14, fontWeight: FontWeight.w500),
-                    maxLines: 1, overflow: TextOverflow.ellipsis),
+                Row(
+                  children: [
+                    Expanded(
+                      child: Text(txn.title,
+                          style: GoogleFonts.poppins(color: AppTheme.textPrimary, fontSize: 14, fontWeight: FontWeight.w500),
+                          maxLines: 1, overflow: TextOverflow.ellipsis),
+                    ),
+                    if (hasReceipt) ...[
+                      const SizedBox(width: 6),
+                      const Icon(Icons.receipt_long_rounded, color: AppTheme.accentPurple, size: 16),
+                    ],
+                  ],
+                ),
                 const SizedBox(height: 2),
                 Text('${txn.category} · ${Fmt.shortDate(txn.date)}',
                     style: GoogleFonts.poppins(color: AppTheme.textMuted, fontSize: 11)),
@@ -63,6 +76,69 @@ class TransactionTile extends StatelessWidget {
             style: GoogleFonts.poppins(color: color, fontSize: 14, fontWeight: FontWeight.w600),
           ),
         ]),
+      ),
+    );
+  }
+
+  void _showReceiptViewer(BuildContext context, String path) {
+    showDialog(
+      context: context,
+      builder: (ctx) => Dialog(
+        backgroundColor: Colors.transparent,
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Align(
+              alignment: Alignment.centerRight,
+              child: IconButton(
+                icon: const Icon(Icons.close_rounded, color: Colors.white, size: 28),
+                onPressed: () => Navigator.pop(ctx),
+              ),
+            ),
+            const SizedBox(height: 8),
+            ClipRRect(
+              borderRadius: BorderRadius.circular(20),
+              child: GlassCard(
+                margin: EdgeInsets.zero,
+                padding: const EdgeInsets.all(8),
+                child: ClipRRect(
+                  borderRadius: BorderRadius.circular(16),
+                  child: path.startsWith('http')
+                      ? Image.network(
+                          path,
+                          fit: BoxFit.contain,
+                          loadingBuilder: (context, child, loadingProgress) {
+                            if (loadingProgress == null) return child;
+                            return Container(
+                              height: 300,
+                              color: AppTheme.glassWhite,
+                              child: const Center(child: CircularProgressIndicator(color: AppTheme.accentPurple)),
+                            );
+                          },
+                          errorBuilder: (context, error, stackTrace) => Container(
+                            height: 200,
+                            color: AppTheme.glassWhite,
+                            child: const Center(
+                              child: Column(
+                                mainAxisAlignment: MainAxisAlignment.center,
+                                children: [
+                                  Icon(Icons.broken_image_rounded, color: AppTheme.textMuted, size: 40),
+                                  SizedBox(height: 8),
+                                  Text('Failed to load cloud receipt', style: TextStyle(color: AppTheme.textMuted, fontSize: 12)),
+                                ],
+                              ),
+                            ),
+                          ),
+                        )
+                      : Image.file(
+                          File(path),
+                          fit: BoxFit.contain,
+                        ),
+                ),
+              ),
+            ),
+          ],
+        ),
       ),
     );
   }

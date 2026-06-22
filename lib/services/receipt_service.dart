@@ -6,6 +6,7 @@ import 'package:path/path.dart' as p;
 import 'package:path_provider/path_provider.dart';
 import 'package:firebase_ai/firebase_ai.dart';
 import 'package:firebase_auth/firebase_auth.dart';
+import 'package:firebase_storage/firebase_storage.dart';
 
 /// Service for picking, storing, and managing receipt images, and extracting data.
 class ReceiptService {
@@ -13,6 +14,31 @@ class ReceiptService {
   static final ReceiptService instance = ReceiptService._();
 
   final _picker = ImagePicker();
+
+  /// Upload a receipt image directly to Firebase Storage and return the download URL.
+  Future<String?> uploadReceiptToStorage(File file) async {
+    final auth = FirebaseAuth.instance;
+    if (auth.currentUser == null) {
+      debugPrint('ReceiptService: Cannot upload receipt, user is not signed in.');
+      return null;
+    }
+
+    try {
+      final fileName = 'receipt_${DateTime.now().millisecondsSinceEpoch}${p.extension(file.path)}';
+      final uid = auth.currentUser!.uid;
+      final ref = FirebaseStorage.instance.ref().child('receipts').child(uid).child(fileName);
+      
+      debugPrint('ReceiptService: Uploading $fileName to Firebase Storage...');
+      final uploadTask = await ref.putFile(file);
+      final downloadUrl = await uploadTask.ref.getDownloadURL();
+      
+      debugPrint('ReceiptService: Upload success. Download URL: $downloadUrl');
+      return downloadUrl;
+    } catch (e) {
+      debugPrint('ReceiptService: Firebase Storage upload error: $e');
+      return null;
+    }
+  }
 
   /// Pick receipt image from camera or gallery.
   Future<File?> pickReceipt({bool fromCamera = false}) async {
@@ -73,7 +99,7 @@ class ReceiptService {
         return _fallbackExtract(imagePath);
       }
 
-      final googleAI = FirebaseAI.googleAI(auth: auth);
+      final googleAI = FirebaseAI.googleAI();
       final model = googleAI.generativeModel(
         model: 'gemini-flash-latest',
         generationConfig: GenerationConfig(responseMimeType: 'application/json'),

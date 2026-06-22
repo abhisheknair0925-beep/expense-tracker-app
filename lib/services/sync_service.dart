@@ -3,6 +3,9 @@ import '../models/account_model.dart';
 import '../models/bill_model.dart';
 import '../models/budget_model.dart';
 import '../models/transaction_model.dart';
+import '../models/goal_model.dart';
+import '../models/group_model.dart';
+import '../models/group_expense_model.dart';
 import 'auth_service.dart';
 import 'database_service.dart';
 import 'firestore_service.dart';
@@ -61,6 +64,9 @@ class SyncService extends ChangeNotifier {
     await _uploadAccounts();
     await _uploadBills();
     await _uploadBudgets();
+    await _uploadGoals();
+    await _uploadGroups();
+    await _uploadGroupExpenses();
   }
 
   Future<void> _uploadTransactions() async {
@@ -99,6 +105,15 @@ class SyncService extends ChangeNotifier {
     debugPrint('SyncService: Uploaded ${unsynced.length} budgets');
   }
 
+  Future<void> _uploadGoals() async {
+    final unsynced = await _db.getUnsyncedGoals();
+    for (final g in unsynced) {
+      final fid = await _fs.upsert(_uid!, 'goals', g.firestoreId, g.toFirestore());
+      await _db.updateGoal(g.copyWith(firestoreId: fid, userId: _uid, isSynced: true));
+    }
+    debugPrint('SyncService: Uploaded ${unsynced.length} goals');
+  }
+
   // ═══════════════════════════════════════════════════════════════════
   // DOWNLOAD — pull cloud data, merge with SQLite (last-write-wins)
   // ═══════════════════════════════════════════════════════════════════
@@ -108,6 +123,9 @@ class SyncService extends ChangeNotifier {
     await _downloadAccounts();
     await _downloadBills();
     await _downloadBudgets();
+    await _downloadGoals();
+    await _downloadGroups();
+    await _downloadGroupExpenses();
   }
 
   Future<void> _downloadTransactions() async {
@@ -259,6 +277,153 @@ class SyncService extends ChangeNotifier {
       }
     }
     debugPrint('SyncService: Downloaded/merged $merged budgets');
+  }
+
+  Future<void> _downloadGoals() async {
+    final remote = await _fs.getAll(_uid!, 'goals');
+    int merged = 0;
+    for (final data in remote) {
+      final fid = data['firestoreId'] as String;
+      final local = await _db.getGoalByFirestoreId(fid);
+      final remoteUpdated = DateTime.parse(data['updatedAt'] as String);
+
+      if (local == null) {
+        await _db.insertGoal(Goal(
+          firestoreId: fid, userId: _uid,
+          profileId: data['profileId'] as String?,
+          name: data['name'] as String,
+          targetAmount: (data['targetAmount'] as num).toDouble(),
+          currentAmount: (data['currentAmount'] as num).toDouble(),
+          targetDate: DateTime.parse(data['targetDate'] as String),
+          category: data['category'] as String,
+          isCompleted: data['isCompleted'] == true || data['isCompleted'] == 1,
+          updatedAt: remoteUpdated, isSynced: true,
+        ));
+        merged++;
+      } else if (remoteUpdated.isAfter(local.updatedAt)) {
+        await _db.updateGoal(Goal(
+          id: local.id, firestoreId: fid, userId: _uid,
+          profileId: data['profileId'] as String?,
+          name: data['name'] as String,
+          targetAmount: (data['targetAmount'] as num).toDouble(),
+          currentAmount: (data['currentAmount'] as num).toDouble(),
+          targetDate: DateTime.parse(data['targetDate'] as String),
+          category: data['category'] as String,
+          isCompleted: data['isCompleted'] == true || data['isCompleted'] == 1,
+          updatedAt: remoteUpdated, isSynced: true,
+        ));
+        merged++;
+      }
+    }
+    debugPrint('SyncService: Downloaded/merged $merged goals');
+  }
+
+  Future<void> _uploadGroups() async {
+    final unsynced = await _db.getUnsyncedGroups();
+    for (final g in unsynced) {
+      final fid = await _fs.upsert(_uid!, 'groups', g.firestoreId, g.toFirestore());
+      await _db.updateGroup(g.copyWith(firestoreId: fid, userId: _uid, isSynced: true));
+    }
+    debugPrint('SyncService: Uploaded ${unsynced.length} groups');
+  }
+
+  Future<void> _uploadGroupExpenses() async {
+    final unsynced = await _db.getUnsyncedGroupExpenses();
+    for (final ge in unsynced) {
+      final fid = await _fs.upsert(_uid!, 'group_expenses', ge.firestoreId, ge.toFirestore());
+      await _db.updateGroupExpense(ge.copyWith(firestoreId: fid, isSynced: true));
+    }
+    debugPrint('SyncService: Uploaded ${unsynced.length} group expenses');
+  }
+
+  Future<void> _downloadGroups() async {
+    final remote = await _fs.getAll(_uid!, 'groups');
+    int merged = 0;
+    for (final data in remote) {
+      final fid = data['firestoreId'] as String;
+      final local = await _db.getGroupByFirestoreId(fid);
+      final remoteUpdated = DateTime.parse(data['updatedAt'] as String);
+
+      if (local == null) {
+        await _db.insertGroup(Group(
+          firestoreId: fid,
+          userId: _uid,
+          profileId: data['profileId'] as String?,
+          name: data['name'] as String,
+          description: data['description'] as String?,
+          members: List<String>.from(data['members'] as List),
+          createdAt: DateTime.parse(data['createdAt'] as String),
+          updatedAt: remoteUpdated,
+          isSynced: true,
+        ));
+        merged++;
+      } else if (remoteUpdated.isAfter(local.updatedAt)) {
+        await _db.updateGroup(Group(
+          id: local.id,
+          firestoreId: fid,
+          userId: _uid,
+          profileId: data['profileId'] as String?,
+          name: data['name'] as String,
+          description: data['description'] as String?,
+          members: List<String>.from(data['members'] as List),
+          createdAt: DateTime.parse(data['createdAt'] as String),
+          updatedAt: remoteUpdated,
+          isSynced: true,
+        ));
+        merged++;
+      }
+    }
+    debugPrint('SyncService: Downloaded/merged $merged groups');
+  }
+
+  Future<void> _downloadGroupExpenses() async {
+    final remote = await _fs.getAll(_uid!, 'group_expenses');
+    int merged = 0;
+    for (final data in remote) {
+      final fid = data['firestoreId'] as String;
+      final local = await _db.getGroupExpenseByFirestoreId(fid);
+      final remoteUpdated = DateTime.parse(data['updatedAt'] as String);
+
+      if (local == null) {
+        final rawSplits = data['splits'] as Map<String, dynamic>;
+        final splits = rawSplits.map((k, v) => MapEntry(k, (v as num).toDouble()));
+
+        await _db.insertGroupExpense(GroupExpense(
+          firestoreId: fid,
+          groupId: data['groupId'] as int,
+          title: data['title'] as String,
+          amount: (data['amount'] as num).toDouble(),
+          paidBy: data['paidBy'] as String,
+          date: DateTime.parse(data['date'] as String),
+          splitType: data['splitType'] as String,
+          splits: splits,
+          createdAt: DateTime.parse(data['createdAt'] as String),
+          updatedAt: remoteUpdated,
+          isSynced: true,
+        ));
+        merged++;
+      } else if (remoteUpdated.isAfter(local.updatedAt)) {
+        final rawSplits = data['splits'] as Map<String, dynamic>;
+        final splits = rawSplits.map((k, v) => MapEntry(k, (v as num).toDouble()));
+
+        await _db.updateGroupExpense(GroupExpense(
+          id: local.id,
+          firestoreId: fid,
+          groupId: data['groupId'] as int,
+          title: data['title'] as String,
+          amount: (data['amount'] as num).toDouble(),
+          paidBy: data['paidBy'] as String,
+          date: DateTime.parse(data['date'] as String),
+          splitType: data['splitType'] as String,
+          splits: splits,
+          createdAt: DateTime.parse(data['createdAt'] as String),
+          updatedAt: remoteUpdated,
+          isSynced: true,
+        ));
+        merged++;
+      }
+    }
+    debugPrint('SyncService: Downloaded/merged $merged group expenses');
   }
 
   /// Sync status text for UI.

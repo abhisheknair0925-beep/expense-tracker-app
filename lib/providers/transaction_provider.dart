@@ -2,6 +2,8 @@ import 'package:flutter/material.dart';
 import '../models/transaction_model.dart';
 import '../services/database_service.dart';
 import '../services/sync_service.dart';
+import '../services/notification_service.dart';
+import '../utils/formatters.dart';
 
 /// Manages all transaction state — list, totals, analytics.
 class TransactionProvider extends ChangeNotifier {
@@ -114,9 +116,44 @@ class TransactionProvider extends ChangeNotifier {
   Future<void> add(Txn t) async {
     final tWithProfile = t.copyWith(profileId: _profileId);
     final id = await _db.insert(tWithProfile);
-    _all.insert(0, tWithProfile.copyWith(id: id));
+    final savedTxn = tWithProfile.copyWith(id: id);
+    _all.insert(0, savedTxn);
     notifyListeners();
     SyncService.instance.syncAll();
+
+    if (!savedTxn.isIncome) {
+      _checkAndTriggerBudgetAlert(savedTxn.category, savedTxn.date.month, savedTxn.date.year, savedTxn.amount);
+    }
+  }
+
+  Future<void> _checkAndTriggerBudgetAlert(String category, int month, int year, double addedAmount) async {
+    try {
+      final budgets = await _db.getBudgets(_profileId);
+      final budget = budgets.firstWhere(
+        (b) => b.category == category && b.month == month && b.year == year,
+      );
+      final spentBefore = _all
+          .where((x) => !x.isIncome && x.category == category && x.date.month == month && x.date.year == year)
+          .fold(0.0, (s, x) => s + x.amount) - addedAmount;
+      final spentAfter = spentBefore + addedAmount;
+      final limit = budget.limit;
+      
+      if (spentAfter >= limit && spentBefore < limit) {
+        await NotificationService.instance.showNow(
+          id: category.hashCode + month + year,
+          title: '🚨 Budget Exceeded for $category',
+          body: 'You have spent ${Fmt.money(spentAfter)} which exceeds your monthly limit of ${Fmt.money(limit)}.',
+        );
+      } else if (spentAfter >= limit * 0.8 && spentBefore < limit * 0.8) {
+        await NotificationService.instance.showNow(
+          id: category.hashCode + month + year + 1,
+          title: '⚠️ 80% Budget Warning for $category',
+          body: 'You have reached 80% of your $category budget. Spent: ${Fmt.money(spentAfter)} / Limit: ${Fmt.money(limit)}.',
+        );
+      }
+    } catch (_) {
+      // No budget set for this category
+    }
   }
 
   Future<void> remove(int id) async {

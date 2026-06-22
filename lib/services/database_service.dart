@@ -5,6 +5,9 @@ import '../models/account_model.dart';
 import '../models/bill_model.dart';
 import '../models/budget_model.dart';
 import '../models/transaction_model.dart';
+import '../models/goal_model.dart';
+import '../models/group_model.dart';
+import '../models/group_expense_model.dart';
 
 /// SQLite CRUD service — offline-first, sync-ready.
 class DatabaseService {
@@ -120,6 +123,59 @@ class DatabaseService {
           await db.execute('CREATE INDEX IF NOT EXISTS idx_budgets_profile ON ${AppConstants.tableBudgets} (profileId)');
           await db.execute('CREATE INDEX IF NOT EXISTS idx_bills_profile ON ${AppConstants.tableBills} (profileId)');
         }
+        if (oldV < 9) {
+          await db.execute('''
+            CREATE TABLE IF NOT EXISTS ${AppConstants.tableGoals} (
+              id INTEGER PRIMARY KEY AUTOINCREMENT,
+              firestoreId TEXT,
+              userId TEXT,
+              profileId TEXT,
+              name TEXT NOT NULL,
+              targetAmount REAL NOT NULL,
+              currentAmount REAL DEFAULT 0,
+              targetDate TEXT NOT NULL,
+              category TEXT NOT NULL,
+              isCompleted INTEGER NOT NULL DEFAULT 0,
+              updatedAt TEXT,
+              isSynced INTEGER NOT NULL DEFAULT 0
+            )
+          ''');
+          await db.execute('CREATE INDEX IF NOT EXISTS idx_goals_profile ON ${AppConstants.tableGoals} (profileId)');
+        }
+        if (oldV < 10) {
+          await db.execute('''
+            CREATE TABLE IF NOT EXISTS ${AppConstants.tableGroups} (
+              id INTEGER PRIMARY KEY AUTOINCREMENT,
+              firestoreId TEXT,
+              userId TEXT,
+              profileId TEXT,
+              name TEXT NOT NULL,
+              description TEXT,
+              members TEXT NOT NULL,
+              createdAt TEXT NOT NULL,
+              updatedAt TEXT NOT NULL,
+              isSynced INTEGER NOT NULL DEFAULT 0
+            )
+          ''');
+          await db.execute('''
+            CREATE TABLE IF NOT EXISTS ${AppConstants.tableGroupExpenses} (
+              id INTEGER PRIMARY KEY AUTOINCREMENT,
+              firestoreId TEXT,
+              groupId INTEGER NOT NULL,
+              title TEXT NOT NULL,
+              amount REAL NOT NULL,
+              paidBy TEXT NOT NULL,
+              date TEXT NOT NULL,
+              splitType TEXT NOT NULL,
+              splits TEXT NOT NULL,
+              createdAt TEXT NOT NULL,
+              updatedAt TEXT NOT NULL,
+              isSynced INTEGER NOT NULL DEFAULT 0
+            )
+          ''');
+          await db.execute('CREATE INDEX IF NOT EXISTS idx_groups_profile ON ${AppConstants.tableGroups} (profileId)');
+          await db.execute('CREATE INDEX IF NOT EXISTS idx_group_expenses_group ON ${AppConstants.tableGroupExpenses} (groupId)');
+        }
       },
     );
   }
@@ -188,12 +244,61 @@ class DatabaseService {
         isSynced INTEGER NOT NULL DEFAULT 0
       )
     ''');
+    await db.execute('''
+      CREATE TABLE ${AppConstants.tableGoals} (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        firestoreId TEXT,
+        userId TEXT,
+        profileId TEXT,
+        name TEXT NOT NULL,
+        targetAmount REAL NOT NULL,
+        currentAmount REAL DEFAULT 0,
+        targetDate TEXT NOT NULL,
+        category TEXT NOT NULL,
+        isCompleted INTEGER NOT NULL DEFAULT 0,
+        updatedAt TEXT,
+        isSynced INTEGER NOT NULL DEFAULT 0
+      )
+    ''');
+    await db.execute('''
+      CREATE TABLE ${AppConstants.tableGroups} (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        firestoreId TEXT,
+        userId TEXT,
+        profileId TEXT,
+        name TEXT NOT NULL,
+        description TEXT,
+        members TEXT NOT NULL,
+        createdAt TEXT NOT NULL,
+        updatedAt TEXT NOT NULL,
+        isSynced INTEGER NOT NULL DEFAULT 0
+      )
+    ''');
+    await db.execute('''
+      CREATE TABLE ${AppConstants.tableGroupExpenses} (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        firestoreId TEXT,
+        groupId INTEGER NOT NULL,
+        title TEXT NOT NULL,
+        amount REAL NOT NULL,
+        paidBy TEXT NOT NULL,
+        date TEXT NOT NULL,
+        splitType TEXT NOT NULL,
+        splits TEXT NOT NULL,
+        createdAt TEXT NOT NULL,
+        updatedAt TEXT NOT NULL,
+        isSynced INTEGER NOT NULL DEFAULT 0
+      )
+    ''');
 
     // Create Indexes
     await db.execute('CREATE INDEX IF NOT EXISTS idx_txn_profile_date ON ${AppConstants.tableTxn} (profileId, date DESC)');
     await db.execute('CREATE INDEX IF NOT EXISTS idx_txn_account ON ${AppConstants.tableTxn} (accountId)');
     await db.execute('CREATE INDEX IF NOT EXISTS idx_budgets_profile ON ${AppConstants.tableBudgets} (profileId)');
     await db.execute('CREATE INDEX IF NOT EXISTS idx_bills_profile ON ${AppConstants.tableBills} (profileId)');
+    await db.execute('CREATE INDEX IF NOT EXISTS idx_goals_profile ON ${AppConstants.tableGoals} (profileId)');
+    await db.execute('CREATE INDEX IF NOT EXISTS idx_groups_profile ON ${AppConstants.tableGroups} (profileId)');
+    await db.execute('CREATE INDEX IF NOT EXISTS idx_group_expenses_group ON ${AppConstants.tableGroupExpenses} (groupId)');
   }
 
   // ═══════════════════════════════════════════════════════════════════
@@ -384,5 +489,128 @@ class DatabaseService {
     final db = await database;
     final rows = await db.query(AppConstants.tableBudgets, where: 'firestoreId = ?', whereArgs: [fid]);
     return rows.isEmpty ? null : Budget.fromMap(rows.first);
+  }
+
+  // ═════════════════════════════════════════════════════════════════
+  // GOALS
+  // ═════════════════════════════════════════════════════════════════
+
+  Future<int> insertGoal(Goal g) async {
+    final db = await database;
+    return db.insert(AppConstants.tableGoals, g.toMap());
+  }
+
+  Future<List<Goal>> getGoals(String? profileId) async {
+    final db = await database;
+    final rows = await db.query(
+      AppConstants.tableGoals,
+      where: profileId == null ? 'profileId IS NULL' : 'profileId = ?',
+      whereArgs: profileId == null ? null : [profileId],
+      orderBy: 'targetDate ASC',
+    );
+    return rows.map(Goal.fromMap).toList();
+  }
+
+  Future<int> deleteGoal(int id) async {
+    final db = await database;
+    return db.delete(AppConstants.tableGoals, where: 'id = ?', whereArgs: [id]);
+  }
+
+  Future<int> updateGoal(Goal g) async {
+    final db = await database;
+    return db.update(AppConstants.tableGoals, g.toMap(), where: 'id = ?', whereArgs: [g.id]);
+  }
+
+  Future<List<Goal>> getUnsyncedGoals() async {
+    final db = await database;
+    final rows = await db.query(AppConstants.tableGoals, where: 'isSynced = 0');
+    return rows.map(Goal.fromMap).toList();
+  }
+
+  Future<Goal?> getGoalByFirestoreId(String fid) async {
+    final db = await database;
+    final rows = await db.query(AppConstants.tableGoals, where: 'firestoreId = ?', whereArgs: [fid]);
+    return rows.isEmpty ? null : Goal.fromMap(rows.first);
+  }
+
+  // GROUPS
+  Future<int> insertGroup(Group g) async {
+    final db = await database;
+    return db.insert(AppConstants.tableGroups, g.toMap());
+  }
+
+  Future<List<Group>> getGroups(String? profileId) async {
+    final db = await database;
+    final rows = await db.query(
+      AppConstants.tableGroups,
+      where: profileId == null ? 'profileId IS NULL' : 'profileId = ?',
+      whereArgs: profileId == null ? null : [profileId],
+      orderBy: 'createdAt DESC',
+    );
+    return rows.map(Group.fromMap).toList();
+  }
+
+  Future<int> deleteGroup(int id) async {
+    final db = await database;
+    return await db.transaction((txn) async {
+      await txn.delete(AppConstants.tableGroupExpenses, where: 'groupId = ?', whereArgs: [id]);
+      return await txn.delete(AppConstants.tableGroups, where: 'id = ?', whereArgs: [id]);
+    });
+  }
+
+  Future<int> updateGroup(Group g) async {
+    final db = await database;
+    return db.update(AppConstants.tableGroups, g.toMap(), where: 'id = ?', whereArgs: [g.id]);
+  }
+
+  Future<List<Group>> getUnsyncedGroups() async {
+    final db = await database;
+    final rows = await db.query(AppConstants.tableGroups, where: 'isSynced = 0');
+    return rows.map(Group.fromMap).toList();
+  }
+
+  Future<Group?> getGroupByFirestoreId(String fid) async {
+    final db = await database;
+    final rows = await db.query(AppConstants.tableGroups, where: 'firestoreId = ?', whereArgs: [fid]);
+    return rows.isEmpty ? null : Group.fromMap(rows.first);
+  }
+
+  // GROUP EXPENSES
+  Future<int> insertGroupExpense(GroupExpense ge) async {
+    final db = await database;
+    return db.insert(AppConstants.tableGroupExpenses, ge.toMap());
+  }
+
+  Future<List<GroupExpense>> getGroupExpenses(int groupId) async {
+    final db = await database;
+    final rows = await db.query(
+      AppConstants.tableGroupExpenses,
+      where: 'groupId = ?',
+      whereArgs: [groupId],
+      orderBy: 'date DESC',
+    );
+    return rows.map(GroupExpense.fromMap).toList();
+  }
+
+  Future<int> deleteGroupExpense(int id) async {
+    final db = await database;
+    return db.delete(AppConstants.tableGroupExpenses, where: 'id = ?', whereArgs: [id]);
+  }
+
+  Future<int> updateGroupExpense(GroupExpense ge) async {
+    final db = await database;
+    return db.update(AppConstants.tableGroupExpenses, ge.toMap(), where: 'id = ?', whereArgs: [ge.id]);
+  }
+
+  Future<List<GroupExpense>> getUnsyncedGroupExpenses() async {
+    final db = await database;
+    final rows = await db.query(AppConstants.tableGroupExpenses, where: 'isSynced = 0');
+    return rows.map(GroupExpense.fromMap).toList();
+  }
+
+  Future<GroupExpense?> getGroupExpenseByFirestoreId(String fid) async {
+    final db = await database;
+    final rows = await db.query(AppConstants.tableGroupExpenses, where: 'firestoreId = ?', whereArgs: [fid]);
+    return rows.isEmpty ? null : GroupExpense.fromMap(rows.first);
   }
 }

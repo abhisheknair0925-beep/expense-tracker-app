@@ -4,11 +4,15 @@ import 'package:provider/provider.dart';
 import '../core/constants/app_constants.dart';
 import '../core/theme/app_theme.dart';
 import '../providers/transaction_provider.dart';
+import '../providers/goal_provider.dart';
+import '../providers/group_provider.dart';
 import '../utils/formatters.dart';
 import '../widgets/chart_widgets.dart';
 import '../widgets/glass_card.dart';
 import '../widgets/transaction_tile.dart';
 import 'settings_screen.dart';
+import 'goals_screen.dart';
+import 'groups_screen.dart';
 
 /// Home dashboard content — used inside ShellScreen.
 class HomeContent extends StatelessWidget {
@@ -25,6 +29,8 @@ class HomeContent extends StatelessWidget {
             SliverToBoxAdapter(child: _header(context, p)),
             SliverToBoxAdapter(child: _balanceCard(p)),
             SliverToBoxAdapter(child: _summaryRow(p)),
+            SliverToBoxAdapter(child: _goalsCard(context)),
+            SliverToBoxAdapter(child: _groupsCard(context)),
             SliverToBoxAdapter(child: _topCategories(p)),
             // Charts
             SliverToBoxAdapter(child: Padding(
@@ -190,4 +196,270 @@ class HomeContent extends StatelessWidget {
       Text('Tap + to add your first one', style: GoogleFonts.poppins(color: AppTheme.textMuted, fontSize: 12)),
     ]),
   );
+
+  Widget _goalsCard(BuildContext context) {
+    return Consumer<GoalProvider>(
+      builder: (context, goalProvider, _) {
+        final activeGoals = goalProvider.goals.where((g) => !g.isCompleted).toList();
+        if (activeGoals.isEmpty) {
+          return Padding(
+            padding: const EdgeInsets.fromLTRB(16, 12, 16, 0),
+            child: GlassCard(
+              onTap: () => Navigator.push(context, MaterialPageRoute(builder: (_) => const GoalsScreen())),
+              padding: const EdgeInsets.all(14),
+              child: Row(
+                children: [
+                  Container(
+                    width: 42,
+                    height: 42,
+                    decoration: BoxDecoration(
+                      color: AppTheme.accentPurple.withValues(alpha: 0.12),
+                      borderRadius: BorderRadius.circular(13),
+                    ),
+                    child: const Icon(Icons.savings_rounded, color: AppTheme.accentPurple, size: 20),
+                  ),
+                  const SizedBox(width: 12),
+                  Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(
+                          'Savings Goals',
+                          style: GoogleFonts.poppins(
+                            color: AppTheme.textPrimary,
+                            fontSize: 14,
+                            fontWeight: FontWeight.w600,
+                          ),
+                        ),
+                        Text(
+                          'Set milestones and start tracking your savings target',
+                          style: GoogleFonts.poppins(color: AppTheme.textMuted, fontSize: 11),
+                        ),
+                      ],
+                    ),
+                  ),
+                  const Icon(Icons.chevron_right_rounded, color: AppTheme.textMuted, size: 20),
+                ],
+              ),
+            ),
+          );
+        }
+
+        double totalTarget = 0;
+        double totalCurrent = 0;
+        for (final g in activeGoals) {
+          totalTarget += g.targetAmount;
+          totalCurrent += g.currentAmount;
+        }
+        final aggregateProgress = totalTarget > 0 ? (totalCurrent / totalTarget).clamp(0.0, 1.0) : 0.0;
+
+        return Padding(
+          padding: const EdgeInsets.fromLTRB(16, 12, 16, 0),
+          child: GlassCard(
+            onTap: () => Navigator.push(context, MaterialPageRoute(builder: (_) => const GoalsScreen())),
+            padding: const EdgeInsets.all(16),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Row(
+                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                  children: [
+                    Row(
+                      children: [
+                        Container(
+                          width: 32,
+                          height: 32,
+                          decoration: BoxDecoration(
+                            color: AppTheme.accentPurple.withValues(alpha: 0.12),
+                            borderRadius: BorderRadius.circular(10),
+                          ),
+                          child: const Icon(Icons.savings_rounded, color: AppTheme.accentPurple, size: 16),
+                        ),
+                        const SizedBox(width: 10),
+                        Text(
+                          'Savings Goals (${activeGoals.length})',
+                          style: GoogleFonts.poppins(
+                            color: AppTheme.textPrimary,
+                            fontSize: 14,
+                            fontWeight: FontWeight.w600,
+                          ),
+                        ),
+                      ],
+                    ),
+                    const Icon(Icons.chevron_right_rounded, color: AppTheme.textMuted, size: 20),
+                  ],
+                ),
+                const SizedBox(height: 12),
+                Row(
+                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                  children: [
+                    Text(
+                      'Saved ${Fmt.money(totalCurrent)} of ${Fmt.money(totalTarget)}',
+                      style: GoogleFonts.poppins(
+                        color: AppTheme.textSecondary,
+                        fontSize: 12,
+                        fontWeight: FontWeight.w500,
+                      ),
+                    ),
+                    Text(
+                      '${(aggregateProgress * 100).toStringAsFixed(0)}%',
+                      style: GoogleFonts.poppins(
+                        color: AppTheme.accentPurple,
+                        fontSize: 13,
+                        fontWeight: FontWeight.w600,
+                      ),
+                    ),
+                  ],
+                ),
+                const SizedBox(height: 8),
+                ClipRRect(
+                  borderRadius: BorderRadius.circular(4),
+                  child: LinearProgressIndicator(
+                    value: aggregateProgress,
+                    backgroundColor: AppTheme.glassWhite,
+                    valueColor: const AlwaysStoppedAnimation<Color>(AppTheme.accentPurple),
+                    minHeight: 6,
+                  ),
+                ),
+              ],
+            ),
+          ),
+        );
+      },
+    );
+  }
+
+  Widget _groupsCard(BuildContext context) {
+    return Consumer<GroupProvider>(
+      builder: (context, groupProvider, _) {
+        final groups = groupProvider.groups;
+        if (groups.isEmpty) {
+          return Padding(
+            padding: const EdgeInsets.fromLTRB(16, 12, 16, 0),
+            child: GlassCard(
+              onTap: () => Navigator.push(context, MaterialPageRoute(builder: (_) => const GroupsScreen())),
+              padding: const EdgeInsets.all(14),
+              child: Row(
+                children: [
+                  Container(
+                    width: 42,
+                    height: 42,
+                    decoration: BoxDecoration(
+                      color: AppTheme.accentBlue.withValues(alpha: 0.12),
+                      borderRadius: BorderRadius.circular(13),
+                    ),
+                    child: const Icon(Icons.group_rounded, color: AppTheme.accentBlue, size: 20),
+                  ),
+                  const SizedBox(width: 12),
+                  Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(
+                          'Group Splits',
+                          style: GoogleFonts.poppins(
+                            color: AppTheme.textPrimary,
+                            fontSize: 14,
+                            fontWeight: FontWeight.w600,
+                          ),
+                        ),
+                        Text(
+                          'Create groups, split bills, and track shared balances',
+                          style: GoogleFonts.poppins(color: AppTheme.textMuted, fontSize: 11),
+                        ),
+                      ],
+                    ),
+                  ),
+                  const Icon(Icons.chevron_right_rounded, color: AppTheme.textMuted, size: 20),
+                ],
+              ),
+            ),
+          );
+        }
+
+        double totalNetBalance = 0;
+        for (final group in groups) {
+          final balances = groupProvider.getNetBalances(group);
+          totalNetBalance += balances['You'] ?? 0.0;
+        }
+
+        return Padding(
+          padding: const EdgeInsets.fromLTRB(16, 12, 16, 0),
+          child: GlassCard(
+            onTap: () => Navigator.push(context, MaterialPageRoute(builder: (_) => const GroupsScreen())),
+            padding: const EdgeInsets.all(16),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Row(
+                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                  children: [
+                    Row(
+                      children: [
+                        Container(
+                          width: 32,
+                          height: 32,
+                          decoration: BoxDecoration(
+                            color: AppTheme.accentBlue.withValues(alpha: 0.12),
+                            borderRadius: BorderRadius.circular(10),
+                          ),
+                          child: const Icon(Icons.group_rounded, color: AppTheme.accentBlue, size: 16),
+                        ),
+                        const SizedBox(width: 10),
+                        Text(
+                          'Group Splits (${groups.length})',
+                          style: GoogleFonts.poppins(
+                            color: AppTheme.textPrimary,
+                            fontSize: 14,
+                            fontWeight: FontWeight.w600,
+                          ),
+                        ),
+                      ],
+                    ),
+                    const Icon(Icons.chevron_right_rounded, color: AppTheme.textMuted, size: 20),
+                  ],
+                ),
+                const SizedBox(height: 12),
+                Row(
+                  children: [
+                    Container(
+                      width: 8,
+                      height: 8,
+                      decoration: BoxDecoration(
+                        color: totalNetBalance == 0
+                            ? AppTheme.textMuted
+                            : totalNetBalance > 0
+                                ? AppTheme.incomeGreen
+                                : AppTheme.expenseRed,
+                        shape: BoxShape.circle,
+                      ),
+                    ),
+                    const SizedBox(width: 8),
+                    Expanded(
+                      child: Text(
+                        totalNetBalance == 0
+                            ? 'All settled up'
+                            : totalNetBalance > 0
+                                ? 'Overall, you are owed ${Fmt.money(totalNetBalance)}'
+                                : 'Overall, you owe ${Fmt.money(totalNetBalance.abs())}',
+                        style: GoogleFonts.poppins(
+                          color: totalNetBalance == 0
+                              ? AppTheme.textSecondary
+                              : totalNetBalance > 0
+                                  ? AppTheme.incomeGreen
+                                  : AppTheme.expenseRed,
+                          fontSize: 12,
+                          fontWeight: FontWeight.w500,
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
+              ],
+            ),
+          ),
+        );
+      },
+    );
+  }
 }

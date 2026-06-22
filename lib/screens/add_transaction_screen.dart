@@ -67,6 +67,18 @@ class _AddState extends State<AddTransactionScreen> with SingleTickerProviderSta
       _ocrLoading = true;
     });
 
+    String? cloudUrl;
+    try {
+      cloudUrl = await ReceiptService.instance.uploadReceiptToStorage(file);
+      if (cloudUrl != null && mounted) {
+        setState(() {
+          _receiptPath = cloudUrl;
+        });
+      }
+    } catch (e) {
+      debugPrint('Error uploading receipt to Firebase Storage: $e');
+    }
+
     try {
       final data = await ReceiptService.instance.extractReceiptData(file.path);
       if (data != null && mounted) {
@@ -256,7 +268,23 @@ class _AddState extends State<AddTransactionScreen> with SingleTickerProviderSta
                           ClipRRect(
                             borderRadius: BorderRadius.circular(12),
                             child: Stack(children: [
-                              Image.file(File(_receiptPath!), height: 120, width: double.infinity, fit: BoxFit.cover),
+                              _receiptPath!.startsWith('http')
+                                  ? Image.network(_receiptPath!, height: 120, width: double.infinity, fit: BoxFit.cover,
+                                      loadingBuilder: (context, child, loadingProgress) {
+                                        if (loadingProgress == null) return child;
+                                        return Container(
+                                          height: 120,
+                                          color: AppTheme.glassWhite,
+                                          child: const Center(child: CircularProgressIndicator(color: AppTheme.accentPurple)),
+                                        );
+                                      },
+                                      errorBuilder: (context, error, stackTrace) => Container(
+                                        height: 120,
+                                        color: AppTheme.glassWhite,
+                                        child: const Center(child: Icon(Icons.broken_image_rounded, color: AppTheme.textMuted)),
+                                      ),
+                                    )
+                                  : Image.file(File(_receiptPath!), height: 120, width: double.infinity, fit: BoxFit.cover),
                               Positioned(top: 4, right: 4, child: GestureDetector(
                                 onTap: () => setState(() => _receiptPath = null),
                                 child: Container(

@@ -15,6 +15,8 @@ import '../widgets/glass_card.dart';
 import 'bills_screen.dart';
 import 'budget_screen.dart';
 import 'accounts_screen.dart';
+import 'goals_screen.dart';
+import 'groups_screen.dart';
 
 /// Settings screen — export, currency, security, sync.
 class SettingsScreen extends StatefulWidget {
@@ -80,6 +82,12 @@ class _SettingsScreenState extends State<SettingsScreen> {
                       child: const SafeArea(child: BudgetScreen()),
                     ),
                   )));
+                }),
+                _tile(Icons.savings_rounded, 'Savings Goals', 'Define, fund, and track savings targets', AppTheme.accentPurple, () {
+                  Navigator.push(context, MaterialPageRoute(builder: (_) => const GoalsScreen()));
+                }),
+                _tile(Icons.group_rounded, 'Group Splits', 'Create groups, split bills, and simplify debts', AppTheme.accentBlue, () {
+                  Navigator.push(context, MaterialPageRoute(builder: (_) => const GroupsScreen()));
                 }),
                 _tile(Icons.account_balance_wallet_rounded, 'Manage Accounts', 'View and manage cash, bank, or credit wallets', AppTheme.incomeGreen, () {
                   Navigator.push(context, MaterialPageRoute(builder: (_) => Scaffold(
