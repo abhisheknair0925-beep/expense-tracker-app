@@ -163,6 +163,21 @@ class TransactionProvider extends ChangeNotifier {
     SyncService.instance.syncAll();
   }
 
+  Future<void> update(Txn t) async {
+    final tWithProfile = t.copyWith(profileId: _profileId, updatedAt: DateTime.now(), isSynced: false);
+    await _db.updateTxn(tWithProfile);
+    final idx = _all.indexWhere((x) => x.id == t.id);
+    if (idx != -1) {
+      _all[idx] = tWithProfile;
+      notifyListeners();
+      SyncService.instance.syncAll();
+
+      if (!tWithProfile.isIncome) {
+        _checkAndTriggerBudgetAlert(tWithProfile.category, tWithProfile.date.month, tWithProfile.date.year, 0); // 0 because the alert logic in this file is a bit simple and doesn't perfectly handle updates yet, but this triggers a check.
+      }
+    }
+  }
+
   void prevMonth() {
     if (_month == 1) { _month = 12; _year--; } else { _month--; }
     notifyListeners();

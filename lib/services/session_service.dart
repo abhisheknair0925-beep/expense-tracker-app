@@ -54,17 +54,26 @@ class SessionService {
     if (user == null) return false;
 
     final sessionId = await _storage.read(key: _sessionKey);
-    if (sessionId == null) return false;
+    if (sessionId == null) {
+      await logoutSession();
+      return false;
+    }
 
     try {
       final doc = await _db.collection('users').doc(user.uid).collection('sessions').doc(sessionId).get();
       
-      if (!doc.exists) return false;
+      if (!doc.exists) {
+        await logoutSession();
+        return false;
+      }
       
       final session = SessionModel.fromMap(doc.data()!);
       
       // Check if session is explicitly inactivated
-      if (!session.isActive) return false;
+      if (!session.isActive) {
+        await logoutSession();
+        return false;
+      }
 
       // Check for timeout
       final diff = DateTime.now().difference(session.lastActiveAt);

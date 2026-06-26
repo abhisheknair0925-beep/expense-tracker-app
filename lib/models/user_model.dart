@@ -6,6 +6,7 @@ class UserModel {
   final String? email;
   final String? phone;
   final String? photoUrl;
+  final String currency;
   final DateTime? createdAt;
   final DateTime? lastLogin;
   final List<String> linkedProviders;
@@ -16,6 +17,7 @@ class UserModel {
     this.email,
     this.phone,
     this.photoUrl,
+    this.currency = 'INR',
     this.createdAt,
     this.lastLogin,
     this.linkedProviders = const [],
@@ -28,6 +30,7 @@ class UserModel {
       'email': email,
       'phone': phone,
       'photoUrl': photoUrl,
+      'currency': currency,
       'createdAt': createdAt != null ? Timestamp.fromDate(createdAt!) : FieldValue.serverTimestamp(),
       'lastLogin': lastLogin != null ? Timestamp.fromDate(lastLogin!) : FieldValue.serverTimestamp(),
       'linkedProviders': linkedProviders,
@@ -41,6 +44,7 @@ class UserModel {
       email: map['email'],
       phone: map['phone'],
       photoUrl: map['photoUrl'],
+      currency: map['currency'] ?? 'INR',
       createdAt: (map['createdAt'] as Timestamp?)?.toDate(),
       lastLogin: (map['lastLogin'] as Timestamp?)?.toDate(),
       linkedProviders: List<String>.from(map['linkedProviders'] ?? []),
@@ -52,6 +56,7 @@ class UserModel {
     String? email,
     String? phone,
     String? photoUrl,
+    String? currency,
     DateTime? lastLogin,
     List<String>? linkedProviders,
   }) {
@@ -61,6 +66,7 @@ class UserModel {
       email: email ?? this.email,
       phone: phone ?? this.phone,
       photoUrl: photoUrl ?? this.photoUrl,
+      currency: currency ?? this.currency,
       createdAt: createdAt,
       lastLogin: lastLogin ?? this.lastLogin,
       linkedProviders: linkedProviders ?? this.linkedProviders,

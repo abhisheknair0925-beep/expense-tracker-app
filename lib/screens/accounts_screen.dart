@@ -6,6 +6,8 @@ import '../core/theme/app_theme.dart';
 import '../models/account_model.dart';
 import '../providers/account_provider.dart';
 import '../utils/formatters.dart';
+import '../providers/user_provider.dart';
+import '../services/currency_service.dart';
 import '../widgets/glass_card.dart';
 
 /// Accounts management screen — view, add, delete accounts.
@@ -14,6 +16,10 @@ class AccountsScreen extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final userProvider = context.watch<UserProvider>();
+    final currency = userProvider.userProfile?.currency ?? 'INR';
+    final currencyIcon = CurrencyService.instance.icon(currency);
+
     return Consumer<AccountProvider>(
       builder: (context, p, _) {
         return CustomScrollView(
@@ -37,7 +43,7 @@ class AccountsScreen extends StatelessWidget {
                 ]),
                 GlassCard(
                   margin: EdgeInsets.zero, padding: const EdgeInsets.all(10), radius: 14,
-                  onTap: () => _showAdd(context),
+                  onTap: () => _showAdd(context, currencyIcon),
                   child: const Icon(Icons.add_rounded, color: AppTheme.accentPurple, size: 22),
                 ),
               ]),
@@ -52,7 +58,7 @@ class AccountsScreen extends StatelessWidget {
                   const SizedBox(height: 6),
                   ShaderMask(
                     shaderCallback: (b) => AppTheme.accentGradient.createShader(b),
-                    child: Text(Fmt.money(p.totalBalance), style: GoogleFonts.poppins(color: Colors.white, fontSize: 32, fontWeight: FontWeight.w700)),
+                    child: Text(Fmt.money(p.totalBalance, currency), style: GoogleFonts.poppins(color: Colors.white, fontSize: 32, fontWeight: FontWeight.w700)),
                   ),
                   const SizedBox(height: 4),
                   Text('${p.accounts.length} account${p.accounts.length == 1 ? '' : 's'}', style: GoogleFonts.poppins(color: AppTheme.textMuted, fontSize: 11)),
@@ -75,7 +81,7 @@ class AccountsScreen extends StatelessWidget {
               SliverPadding(
                 padding: const EdgeInsets.symmetric(horizontal: 16),
                 sliver: SliverList(delegate: SliverChildBuilderDelegate(
-                  (ctx, i) => _tile(context, p.accounts[i], p),
+                  (ctx, i) => _tile(context, p.accounts[i], p, currency),
                   childCount: p.accounts.length,
                 )),
               ),
@@ -86,7 +92,7 @@ class AccountsScreen extends StatelessWidget {
     );
   }
 
-  Widget _tile(BuildContext context, Account a, AccountProvider p) {
+  Widget _tile(BuildContext context, Account a, AccountProvider p, String currency) {
     final icon = AppConstants.accountIcons[a.type] ?? Icons.account_balance_wallet_rounded;
     final color = a.type == 'bank' ? AppTheme.accentBlue : a.type == 'wallet' ? AppTheme.accentPurple : AppTheme.incomeGreen;
     return Dismissible(
@@ -112,13 +118,13 @@ class AccountsScreen extends StatelessWidget {
             Text(a.name, style: GoogleFonts.poppins(color: AppTheme.textPrimary, fontSize: 15, fontWeight: FontWeight.w500)),
             Text(a.type[0].toUpperCase() + a.type.substring(1), style: GoogleFonts.poppins(color: AppTheme.textMuted, fontSize: 12)),
           ])),
-          Text(Fmt.money(a.balance), style: GoogleFonts.poppins(color: AppTheme.textPrimary, fontSize: 16, fontWeight: FontWeight.w600)),
+          Text(Fmt.money(a.balance, currency), style: GoogleFonts.poppins(color: AppTheme.textPrimary, fontSize: 16, fontWeight: FontWeight.w600)),
         ]),
       ),
     );
   }
 
-  void _showAdd(BuildContext context) {
+  void _showAdd(BuildContext context, IconData currencyIcon) {
     final nameCtrl = TextEditingController();
     final balCtrl = TextEditingController(text: '0');
     String type = 'cash';
@@ -136,7 +142,7 @@ class AccountsScreen extends StatelessWidget {
             const SizedBox(height: 16),
             TextField(controller: nameCtrl, style: GoogleFonts.poppins(color: AppTheme.textPrimary), decoration: const InputDecoration(labelText: 'Account Name', prefixIcon: Icon(Icons.label_rounded, color: AppTheme.textMuted))),
             const SizedBox(height: 12),
-            TextField(controller: balCtrl, keyboardType: const TextInputType.numberWithOptions(decimal: true), style: GoogleFonts.poppins(color: AppTheme.textPrimary), decoration: const InputDecoration(labelText: 'Opening Balance', prefixIcon: Icon(Icons.currency_rupee_rounded, color: AppTheme.textMuted))),
+            TextField(controller: balCtrl, keyboardType: const TextInputType.numberWithOptions(decimal: true), style: GoogleFonts.poppins(color: AppTheme.textPrimary), decoration: InputDecoration(labelText: 'Opening Balance', prefixIcon: Icon(currencyIcon, color: AppTheme.textMuted))),
             const SizedBox(height: 14),
             // Type selector
             Row(children: AppConstants.accountTypes.map((t) {

@@ -6,10 +6,12 @@ import '../core/theme/app_theme.dart';
 import '../providers/transaction_provider.dart';
 import '../providers/goal_provider.dart';
 import '../providers/group_provider.dart';
+import '../providers/user_provider.dart';
 import '../utils/formatters.dart';
 import '../widgets/chart_widgets.dart';
 import '../widgets/glass_card.dart';
 import '../widgets/transaction_tile.dart';
+import 'add_transaction_screen.dart';
 import 'settings_screen.dart';
 import 'goals_screen.dart';
 import 'groups_screen.dart';
@@ -20,6 +22,9 @@ class HomeContent extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final userProvider = context.watch<UserProvider>();
+    final currency = userProvider.userProfile?.currency ?? 'INR';
+
     return Consumer<TransactionProvider>(
       builder: (context, p, _) {
         if (p.loading) return const Center(child: CircularProgressIndicator(color: AppTheme.accentPurple));
@@ -27,19 +32,19 @@ class HomeContent extends StatelessWidget {
           physics: const BouncingScrollPhysics(),
           slivers: [
             SliverToBoxAdapter(child: _header(context, p)),
-            SliverToBoxAdapter(child: _balanceCard(p)),
-            SliverToBoxAdapter(child: _summaryRow(p)),
-            SliverToBoxAdapter(child: _goalsCard(context)),
-            SliverToBoxAdapter(child: _groupsCard(context)),
-            SliverToBoxAdapter(child: _topCategories(p)),
+            SliverToBoxAdapter(child: _balanceCard(p, currency)),
+            SliverToBoxAdapter(child: _summaryRow(p, currency)),
+            SliverToBoxAdapter(child: _goalsCard(context, currency)),
+            SliverToBoxAdapter(child: _groupsCard(context, currency)),
+            SliverToBoxAdapter(child: _topCategories(p, currency)),
             // Charts
             SliverToBoxAdapter(child: Padding(
               padding: const EdgeInsets.symmetric(horizontal: 16),
-              child: CategoryPieChart(data: p.catExpenses),
+              child: CategoryPieChart(data: p.catExpenses, currency: currency),
             )),
             SliverToBoxAdapter(child: Padding(
               padding: const EdgeInsets.symmetric(horizontal: 16),
-              child: MonthlyBarChart(data: p.yearlyTrend),
+              child: MonthlyBarChart(data: p.yearlyTrend, currency: currency),
             )),
             // Recent transactions
             SliverToBoxAdapter(child: Padding(
@@ -54,7 +59,14 @@ class HomeContent extends StatelessWidget {
                 sliver: SliverList(delegate: SliverChildBuilderDelegate(
                   (ctx, i) {
                     final t = p.recent[i];
-                    return TransactionTile(txn: t, onDelete: () => p.remove(t.id!));
+                    return TransactionTile(
+                      txn: t, 
+                      currency: currency,
+                      onDelete: () => p.remove(t.id!),
+                      onEdit: () => Navigator.push(context, MaterialPageRoute(
+                        builder: (_) => AddTransactionScreen(transactionToEdit: t),
+                      )),
+                    );
                   },
                   childCount: p.recent.length,
                 )),
@@ -102,7 +114,7 @@ class HomeContent extends StatelessWidget {
   );
 
   // ─── Balance card ─────────────────────────────────────────────────
-  Widget _balanceCard(TransactionProvider p) => Padding(
+  Widget _balanceCard(TransactionProvider p, String currency) => Padding(
     padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
     child: GlassCard(
       padding: const EdgeInsets.symmetric(vertical: 28, horizontal: 20),
@@ -111,7 +123,7 @@ class HomeContent extends StatelessWidget {
         const SizedBox(height: 6),
         ShaderMask(
           shaderCallback: (b) => AppTheme.accentGradient.createShader(b),
-          child: Text(Fmt.money(p.balance), style: GoogleFonts.poppins(color: Colors.white, fontSize: 36, fontWeight: FontWeight.w700)),
+          child: Text(Fmt.money(p.balance, currency), style: GoogleFonts.poppins(color: Colors.white, fontSize: 36, fontWeight: FontWeight.w700)),
         ),
         const SizedBox(height: 4),
         Text('${p.monthly.length} transactions this month', style: GoogleFonts.poppins(color: AppTheme.textMuted, fontSize: 11)),
@@ -120,16 +132,16 @@ class HomeContent extends StatelessWidget {
   );
 
   // ─── Income / Expense cards ───────────────────────────────────────
-  Widget _summaryRow(TransactionProvider p) => Padding(
+  Widget _summaryRow(TransactionProvider p, String currency) => Padding(
     padding: const EdgeInsets.symmetric(horizontal: 16),
     child: Row(children: [
-      Expanded(child: _summaryCard(Icons.arrow_downward_rounded, 'Income', p.income, AppTheme.incomeGreen)),
+      Expanded(child: _summaryCard(Icons.arrow_downward_rounded, 'Income', p.income, AppTheme.incomeGreen, currency)),
       const SizedBox(width: 12),
-      Expanded(child: _summaryCard(Icons.arrow_upward_rounded, 'Expense', p.expense, AppTheme.expenseRed)),
+      Expanded(child: _summaryCard(Icons.arrow_upward_rounded, 'Expense', p.expense, AppTheme.expenseRed, currency)),
     ]),
   );
 
-  Widget _summaryCard(IconData icon, String label, double amount, Color color) => GlassCard(
+  Widget _summaryCard(IconData icon, String label, double amount, Color color, String currency) => GlassCard(
     padding: const EdgeInsets.all(14),
     child: Row(children: [
       Container(
@@ -140,13 +152,13 @@ class HomeContent extends StatelessWidget {
       const SizedBox(width: 10),
       Expanded(child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
         Text(label, style: GoogleFonts.poppins(color: AppTheme.textMuted, fontSize: 11)),
-        Text(Fmt.money(amount), style: GoogleFonts.poppins(color: color, fontSize: 16, fontWeight: FontWeight.w600), maxLines: 1, overflow: TextOverflow.ellipsis),
+        Text(Fmt.money(amount, currency), style: GoogleFonts.poppins(color: color, fontSize: 16, fontWeight: FontWeight.w600), maxLines: 1, overflow: TextOverflow.ellipsis),
       ])),
     ]),
   );
 
   // ─── Top categories preview ───────────────────────────────────────
-  Widget _topCategories(TransactionProvider p) {
+  Widget _topCategories(TransactionProvider p, String currency) {
     if (p.catExpenses.isEmpty) return const SizedBox.shrink();
     final top = p.catExpenses.entries.take(3);
     return Padding(
@@ -168,7 +180,7 @@ class HomeContent extends StatelessWidget {
                 Expanded(child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
                   Row(mainAxisAlignment: MainAxisAlignment.spaceBetween, children: [
                     Text(e.key, style: GoogleFonts.poppins(color: AppTheme.textPrimary, fontSize: 12, fontWeight: FontWeight.w500)),
-                    Text(Fmt.money(e.value), style: GoogleFonts.poppins(color: AppTheme.textSecondary, fontSize: 11)),
+                    Text(Fmt.money(e.value, currency), style: GoogleFonts.poppins(color: AppTheme.textSecondary, fontSize: 11)),
                   ]),
                   const SizedBox(height: 4),
                   ClipRRect(borderRadius: BorderRadius.circular(3), child: LinearProgressIndicator(value: pct, backgroundColor: AppTheme.glassWhite, valueColor: AlwaysStoppedAnimation(cc), minHeight: 4)),
@@ -197,7 +209,7 @@ class HomeContent extends StatelessWidget {
     ]),
   );
 
-  Widget _goalsCard(BuildContext context) {
+  Widget _goalsCard(BuildContext context, String currency) {
     return Consumer<GoalProvider>(
       builder: (context, goalProvider, _) {
         final activeGoals = goalProvider.goals.where((g) => !g.isCompleted).toList();
@@ -294,7 +306,7 @@ class HomeContent extends StatelessWidget {
                   mainAxisAlignment: MainAxisAlignment.spaceBetween,
                   children: [
                     Text(
-                      'Saved ${Fmt.money(totalCurrent)} of ${Fmt.money(totalTarget)}',
+                      'Saved ${Fmt.money(totalCurrent, currency)} of ${Fmt.money(totalTarget, currency)}',
                       style: GoogleFonts.poppins(
                         color: AppTheme.textSecondary,
                         fontSize: 12,
@@ -329,7 +341,7 @@ class HomeContent extends StatelessWidget {
     );
   }
 
-  Widget _groupsCard(BuildContext context) {
+  Widget _groupsCard(BuildContext context, String currency) {
     return Consumer<GroupProvider>(
       builder: (context, groupProvider, _) {
         final groups = groupProvider.groups;
@@ -440,8 +452,8 @@ class HomeContent extends StatelessWidget {
                         totalNetBalance == 0
                             ? 'All settled up'
                             : totalNetBalance > 0
-                                ? 'Overall, you are owed ${Fmt.money(totalNetBalance)}'
-                                : 'Overall, you owe ${Fmt.money(totalNetBalance.abs())}',
+                                ? 'Overall, you are owed ${Fmt.money(totalNetBalance, currency)}'
+                                : 'Overall, you owe ${Fmt.money(totalNetBalance.abs(), currency)}',
                         style: GoogleFonts.poppins(
                           color: totalNetBalance == 0
                               ? AppTheme.textSecondary

@@ -26,6 +26,11 @@ class AuthService {
   /// Sign in with Google or Link Google Account
   Future<User?> signInOrLinkWithGoogle() async {
     try {
+      // Force account picker by signing out first
+      try {
+        await _google.signOut();
+      } catch (_) {}
+
       final googleUser = await _google.signIn();
       if (googleUser == null) return null;
 

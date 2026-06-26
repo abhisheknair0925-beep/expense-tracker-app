@@ -353,7 +353,35 @@ class DatabaseService {
 
   Future<int> updateTxn(Txn t) async {
     final db = await database;
-    return db.update(AppConstants.tableTxn, t.toMap(), where: 'id = ?', whereArgs: [t.id]);
+    return await db.transaction((txn) async {
+      // Get the old transaction to adjust account balances
+      final oldRows = await txn.query(AppConstants.tableTxn, where: 'id = ?', whereArgs: [t.id]);
+      if (oldRows.isNotEmpty) {
+        final oldT = Txn.fromMap(oldRows.first);
+        
+        // 1. Reverse the old transaction impact on the old account
+        if (oldT.accountId != null) {
+          final reverseAdjustment = oldT.isIncome ? -oldT.amount : oldT.amount;
+          await txn.rawUpdate('''
+            UPDATE ${AppConstants.tableAccounts}
+            SET balance = balance + ?, updatedAt = ?
+            WHERE id = ?
+          ''', [reverseAdjustment, DateTime.now().toIso8601String(), oldT.accountId]);
+        }
+        
+        // 2. Apply the new transaction impact on the new (or same) account
+        if (t.accountId != null) {
+          final newAdjustment = t.isIncome ? t.amount : -t.amount;
+          await txn.rawUpdate('''
+            UPDATE ${AppConstants.tableAccounts}
+            SET balance = balance + ?, updatedAt = ?
+            WHERE id = ?
+          ''', [newAdjustment, DateTime.now().toIso8601String(), t.accountId]);
+        }
+      }
+      
+      return await txn.update(AppConstants.tableTxn, t.toMap(), where: 'id = ?', whereArgs: [t.id]);
+    });
   }
 
   Future<List<Txn>> getUnsyncedTxns() async {

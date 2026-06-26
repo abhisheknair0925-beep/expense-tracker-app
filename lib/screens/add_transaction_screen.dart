@@ -7,6 +7,8 @@ import '../core/theme/app_theme.dart';
 import '../models/transaction_model.dart';
 import '../providers/account_provider.dart';
 import '../providers/transaction_provider.dart';
+import '../providers/user_provider.dart';
+import '../services/currency_service.dart';
 import '../services/receipt_service.dart';
 import '../services/smart_category_service.dart';
 import '../utils/formatters.dart';
@@ -14,7 +16,8 @@ import '../widgets/glass_card.dart';
 
 /// Add transaction form with glassmorphism styling.
 class AddTransactionScreen extends StatefulWidget {
-  const AddTransactionScreen({super.key});
+  final Txn? transactionToEdit;
+  const AddTransactionScreen({super.key, this.transactionToEdit});
   @override
   State<AddTransactionScreen> createState() => _AddState();
 }
@@ -37,7 +40,19 @@ class _AddState extends State<AddTransactionScreen> with SingleTickerProviderSta
   void initState() {
     super.initState();
     _anim = AnimationController(vsync: this, duration: const Duration(milliseconds: 500))..forward();
-    _title.addListener(_onTitleChanged);
+    
+    if (widget.transactionToEdit != null) {
+      final t = widget.transactionToEdit!;
+      _title.text = t.title;
+      _amount.text = t.amount.toString();
+      _type = t.type;
+      _cat = t.category;
+      _accountId = t.accountId;
+      _receiptPath = t.receiptPath;
+      _date = t.date;
+    } else {
+      _title.addListener(_onTitleChanged);
+    }
   }
 
   @override
@@ -140,16 +155,37 @@ class _AddState extends State<AddTransactionScreen> with SingleTickerProviderSta
       return;
     }
     setState(() => _saving = true);
-    await context.read<TransactionProvider>().add(Txn(
+    
+    final provider = context.read<TransactionProvider>();
+    final txn = Txn(
+      id: widget.transactionToEdit?.id,
       title: _title.text.trim(),
       amount: double.parse(_amount.text.trim()),
-      type: _type, category: _cat!, accountId: _accountId, receiptPath: _receiptPath, date: _date,
-    ));
+      type: _type, 
+      category: _cat!, 
+      accountId: _accountId, 
+      receiptPath: _receiptPath, 
+      date: _date,
+      firestoreId: widget.transactionToEdit?.firestoreId,
+      userId: widget.transactionToEdit?.userId,
+      profileId: widget.transactionToEdit?.profileId,
+    );
+
+    if (widget.transactionToEdit != null) {
+      await provider.update(txn);
+    } else {
+      await provider.add(txn);
+    }
+
     if (mounted) Navigator.pop(context);
   }
 
   @override
   Widget build(BuildContext context) {
+    final userProvider = context.watch<UserProvider>();
+    final currency = userProvider.userProfile?.currency ?? 'INR';
+    final currencyIcon = CurrencyService.instance.icon(currency);
+
     return Scaffold(
       extendBodyBehindAppBar: true,
       body: Stack(children: [
@@ -164,7 +200,8 @@ class _AddState extends State<AddTransactionScreen> with SingleTickerProviderSta
                   GlassCard(margin: EdgeInsets.zero, padding: const EdgeInsets.all(8), radius: 12, onTap: () => Navigator.pop(context),
                     child: const Icon(Icons.arrow_back_rounded, color: AppTheme.textPrimary, size: 22)),
                   const SizedBox(width: 14),
-                  Text('Add Transaction', style: GoogleFonts.poppins(color: AppTheme.textPrimary, fontSize: 20, fontWeight: FontWeight.w600)),
+                  Text(widget.transactionToEdit != null ? 'Edit Transaction' : 'Add Transaction', 
+                    style: GoogleFonts.poppins(color: AppTheme.textPrimary, fontSize: 20, fontWeight: FontWeight.w600)),
                 ])),
                 // Form
                 Expanded(child: SingleChildScrollView(
@@ -182,7 +219,7 @@ class _AddState extends State<AddTransactionScreen> with SingleTickerProviderSta
                     _field(_title, 'Title', Icons.title_rounded, (v) => v != null && v.trim().isNotEmpty ? null : 'Required'),
                     const SizedBox(height: 10),
                     // Amount
-                    _field(_amount, 'Amount', Icons.currency_rupee_rounded, (v) {
+                    _field(_amount, 'Amount', currencyIcon, (v) {
                       if (v == null || v.trim().isEmpty) return 'Required';
                       final n = double.tryParse(v.trim());
                       if (n == null || n <= 0) return 'Invalid';
@@ -308,7 +345,8 @@ class _AddState extends State<AddTransactionScreen> with SingleTickerProviderSta
                           boxShadow: [BoxShadow(color: AppTheme.accentPurple.withValues(alpha: 0.3), blurRadius: 16, offset: const Offset(0, 6))]),
                         child: Center(child: _saving
                           ? const SizedBox(width: 22, height: 22, child: CircularProgressIndicator(color: Colors.white, strokeWidth: 2.5))
-                          : Text('Save Transaction', style: GoogleFonts.poppins(color: Colors.white, fontSize: 15, fontWeight: FontWeight.w600))),
+                          : Text(widget.transactionToEdit != null ? 'Update Transaction' : 'Save Transaction', 
+                              style: GoogleFonts.poppins(color: Colors.white, fontSize: 15, fontWeight: FontWeight.w600))),
                       ),
                     ),
                     const SizedBox(height: 32),

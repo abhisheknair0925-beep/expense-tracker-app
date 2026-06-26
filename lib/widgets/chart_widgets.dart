@@ -11,7 +11,8 @@ import 'glass_card.dart';
 
 class CategoryPieChart extends StatelessWidget {
   final Map<String, double> data;
-  const CategoryPieChart({super.key, required this.data});
+  final String currency;
+  const CategoryPieChart({super.key, required this.data, this.currency = 'INR'});
 
   static const _colors = [
     Color(0xFF7B61FF), Color(0xFF4FC3F7), Color(0xFFFF5252),
@@ -57,7 +58,7 @@ class CategoryPieChart extends StatelessWidget {
             children: [
               Container(width: 10, height: 10, decoration: BoxDecoration(color: _colors[e.key % _colors.length], borderRadius: BorderRadius.circular(3))),
               const SizedBox(width: 5),
-              Text('${e.value.key} (${Fmt.money(e.value.value)})',
+              Text('${e.value.key} (${Fmt.money(e.value.value, currency)})',
                   style: GoogleFonts.poppins(color: AppTheme.textSecondary, fontSize: 10)),
             ],
           )).toList(),
@@ -73,7 +74,8 @@ class CategoryPieChart extends StatelessWidget {
 
 class MonthlyBarChart extends StatelessWidget {
   final List<({int month, double income, double expense})> data;
-  const MonthlyBarChart({super.key, required this.data});
+  final String currency;
+  const MonthlyBarChart({super.key, required this.data, this.currency = 'INR'});
 
   static const _months = ['', 'Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
 
@@ -108,7 +110,7 @@ class MonthlyBarChart extends StatelessWidget {
             barTouchData: BarTouchData(
               touchTooltipData: BarTouchTooltipData(
                 getTooltipItem: (group, gi, rod, ri) => BarTooltipItem(
-                  '${_months[group.x]}\n${ri == 0 ? 'Inc' : 'Exp'}: ${Fmt.money(rod.toY)}',
+                  '${_months[group.x]}\n${ri == 0 ? 'Inc' : 'Exp'}: ${Fmt.money(rod.toY, currency)}',
                   GoogleFonts.poppins(color: Colors.white, fontSize: 11),
                 ),
               ),

@@ -6,6 +6,8 @@ import '../core/theme/app_theme.dart';
 import '../models/budget_model.dart';
 import '../providers/budget_provider.dart';
 import '../providers/transaction_provider.dart';
+import '../providers/user_provider.dart';
+import '../services/currency_service.dart';
 import '../utils/formatters.dart';
 import '../widgets/glass_card.dart';
 
@@ -17,6 +19,9 @@ class BudgetScreen extends StatelessWidget {
   Widget build(BuildContext context) {
     final txnP = context.watch<TransactionProvider>();
     final budP = context.watch<BudgetProvider>();
+    final userProvider = context.watch<UserProvider>();
+    final currency = userProvider.userProfile?.currency ?? 'INR';
+    final currencyIcon = CurrencyService.instance.icon(currency);
     final cats = AppConstants.expenseCategories;
 
     return CustomScrollView(
@@ -38,7 +43,7 @@ class BudgetScreen extends StatelessWidget {
               Text('Budgets', style: GoogleFonts.poppins(color: AppTheme.textPrimary, fontSize: 24, fontWeight: FontWeight.w700)),
             ]),
             GlassCard(margin: EdgeInsets.zero, padding: const EdgeInsets.all(10), radius: 14,
-              onTap: () => _showAdd(context, txnP, budP),
+              onTap: () => _showAdd(context, txnP, budP, currencyIcon),
               child: const Icon(Icons.add_rounded, color: AppTheme.accentPurple, size: 22)),
           ]),
         )),
@@ -46,9 +51,9 @@ class BudgetScreen extends StatelessWidget {
         SliverToBoxAdapter(child: Padding(
           padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
           child: GlassCard(padding: const EdgeInsets.all(18), child: Row(children: [
-            _miniStat('Total Budget', Fmt.money(budP.budgets.where((b) => b.month == txnP.month && b.year == txnP.year).fold(0.0, (s, b) => s + b.limit)), AppTheme.accentBlue),
+            _miniStat('Total Budget', Fmt.money(budP.budgets.where((b) => b.month == txnP.month && b.year == txnP.year).fold(0.0, (s, b) => s + b.limit), currency), AppTheme.accentBlue),
             Container(width: 1, height: 40, color: AppTheme.glassBorder),
-            _miniStat('Total Spent', Fmt.money(txnP.expense), AppTheme.expenseRed),
+            _miniStat('Total Spent', Fmt.money(txnP.expense, currency), AppTheme.expenseRed),
           ])),
         )),
         // Category budget cards
@@ -58,7 +63,7 @@ class BudgetScreen extends StatelessWidget {
             final cat = cats[i];
             final budget = budP.forCategory(cat);
             final spent = txnP.catExpenses[cat] ?? 0;
-            return _catCard(context, cat, budget, spent, txnP, budP);
+            return _catCard(context, cat, budget, spent, txnP, budP, currency);
           }, childCount: cats.length)),
         ),
         const SliverToBoxAdapter(child: SizedBox(height: 100)),
@@ -74,7 +79,7 @@ class BudgetScreen extends StatelessWidget {
     ]),
   );
 
-  Widget _catCard(BuildContext context, String cat, Budget? budget, double spent, TransactionProvider txnP, BudgetProvider budP) {
+  Widget _catCard(BuildContext context, String cat, Budget? budget, double spent, TransactionProvider txnP, BudgetProvider budP, String currency) {
     final icon = AppConstants.catIcons[cat] ?? Icons.more_horiz_rounded;
     final color = AppConstants.catColors[cat] ?? AppTheme.textMuted;
     final hasB = budget != null;
@@ -90,7 +95,7 @@ class BudgetScreen extends StatelessWidget {
           const SizedBox(width: 12),
           Expanded(child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
             Text(cat, style: GoogleFonts.poppins(color: AppTheme.textPrimary, fontSize: 14, fontWeight: FontWeight.w500)),
-            Text(hasB ? '${Fmt.money(spent)} / ${Fmt.money(budget.limit)}' : 'No budget set',
+            Text(hasB ? '${Fmt.money(spent, currency)} / ${Fmt.money(budget.limit, currency)}' : 'No budget set',
                 style: GoogleFonts.poppins(color: isOver ? AppTheme.expenseRed : AppTheme.textMuted, fontSize: 11)),
           ])),
           if (isOver) Container(
@@ -122,6 +127,9 @@ class BudgetScreen extends StatelessWidget {
   }
 
   void _quickSet(BuildContext context, String cat, TransactionProvider txnP, BudgetProvider budP) {
+    final userProvider = context.read<UserProvider>();
+    final currency = userProvider.userProfile?.currency ?? 'INR';
+    final currencyIcon = CurrencyService.instance.icon(currency);
     final ctrl = TextEditingController();
     showModalBottomSheet(context: context, isScrollControlled: true, backgroundColor: Colors.transparent,
       builder: (ctx) => Container(
@@ -134,7 +142,7 @@ class BudgetScreen extends StatelessWidget {
           const SizedBox(height: 16),
           TextField(controller: ctrl, keyboardType: const TextInputType.numberWithOptions(decimal: true),
             style: GoogleFonts.poppins(color: AppTheme.textPrimary, fontSize: 20, fontWeight: FontWeight.w600),
-            decoration: const InputDecoration(labelText: 'Monthly Limit', prefixIcon: Icon(Icons.currency_rupee_rounded, color: AppTheme.textMuted))),
+            decoration: InputDecoration(labelText: 'Monthly Limit', prefixIcon: Icon(currencyIcon, color: AppTheme.textMuted))),
           const SizedBox(height: 20),
           GestureDetector(
             onTap: () {
@@ -152,5 +160,34 @@ class BudgetScreen extends StatelessWidget {
     );
   }
 
-  void _showAdd(BuildContext context, TransactionProvider txnP, BudgetProvider budP) => _quickSet(context, AppConstants.expenseCategories.first, txnP, budP);
+  void _showAdd(BuildContext context, TransactionProvider txnP, BudgetProvider budP, IconData currencyIcon) {
+    final ctrl = TextEditingController();
+    showModalBottomSheet(context: context, isScrollControlled: true, backgroundColor: Colors.transparent,
+      builder: (ctx) => Container(
+        padding: EdgeInsets.fromLTRB(20, 20, 20, MediaQuery.of(ctx).viewInsets.bottom + 20),
+        decoration: const BoxDecoration(color: AppTheme.primaryMid, borderRadius: BorderRadius.vertical(top: Radius.circular(28))),
+        child: Column(mainAxisSize: MainAxisSize.min, children: [
+          Center(child: Container(width: 40, height: 4, decoration: BoxDecoration(color: AppTheme.glassBorder, borderRadius: BorderRadius.circular(2)))),
+          const SizedBox(height: 16),
+          Text('Set Budget', style: GoogleFonts.poppins(color: AppTheme.textPrimary, fontSize: 18, fontWeight: FontWeight.w600)),
+          const SizedBox(height: 16),
+          TextField(controller: ctrl, keyboardType: const TextInputType.numberWithOptions(decimal: true),
+            style: GoogleFonts.poppins(color: AppTheme.textPrimary, fontSize: 20, fontWeight: FontWeight.w600),
+            decoration: InputDecoration(labelText: 'Monthly Limit', prefixIcon: Icon(currencyIcon, color: AppTheme.textMuted))),
+          const SizedBox(height: 20),
+          GestureDetector(
+            onTap: () {
+              final val = double.tryParse(ctrl.text);
+              if (val == null || val <= 0) return;
+              budP.add(Budget(category: AppConstants.expenseCategories.first, limit: val, month: txnP.month, year: txnP.year));
+              Navigator.pop(ctx);
+            },
+            child: Container(width: double.infinity, padding: const EdgeInsets.symmetric(vertical: 14),
+              decoration: BoxDecoration(gradient: AppTheme.accentGradient, borderRadius: BorderRadius.circular(16)),
+              child: Center(child: Text('Save Budget', style: GoogleFonts.poppins(color: Colors.white, fontSize: 15, fontWeight: FontWeight.w600)))),
+          ),
+        ]),
+      ),
+    );
+  }
 }

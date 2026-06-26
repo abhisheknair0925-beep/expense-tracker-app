@@ -6,14 +6,21 @@ class SessionProvider extends ChangeNotifier {
   final _sessionService = SessionService.instance;
   
   bool _isSessionValid = false;
+  bool _isChecking = false;
   bool get isSessionValid => _isSessionValid;
+  bool get isChecking => _isChecking;
   
   List<SessionModel> _activeSessions = [];
   List<SessionModel> get activeSessions => _activeSessions;
 
   /// Validates session and updates state
   Future<void> checkSession() async {
+    if (_isChecking) return;
+    _isChecking = true;
+    notifyListeners();
+    
     _isSessionValid = await _sessionService.validateSession();
+    _isChecking = false;
     notifyListeners();
   }
 

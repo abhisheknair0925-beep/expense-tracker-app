@@ -9,6 +9,7 @@ class GlassCard extends StatelessWidget {
   final EdgeInsetsGeometry margin;
   final double radius;
   final VoidCallback? onTap;
+  final VoidCallback? onLongPress;
 
   const GlassCard({
     super.key,
@@ -17,12 +18,14 @@ class GlassCard extends StatelessWidget {
     this.margin = const EdgeInsets.symmetric(vertical: 6),
     this.radius = 20,
     this.onTap,
+    this.onLongPress,
   });
 
   @override
   Widget build(BuildContext context) {
     return GestureDetector(
       onTap: onTap,
+      onLongPress: onLongPress,
       child: Container(
         margin: margin,
         child: ClipRRect(

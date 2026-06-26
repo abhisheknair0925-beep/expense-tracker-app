@@ -15,11 +15,58 @@ class OtpScreen extends StatefulWidget {
 
 class _OtpScreenState extends State<OtpScreen> {
   final TextEditingController _otpController = TextEditingController();
+  int _resendTimer = 60;
+  bool _canResend = false;
+  late final javaTimer; // Using a simple Timer
+
+  @override
+  void initState() {
+    super.initState();
+    _startTimer();
+  }
+
+  void _startTimer() {
+    setState(() {
+      _resendTimer = 60;
+      _canResend = false;
+    });
+    Future.doWhile(() async {
+      await Future.delayed(const Duration(seconds: 1));
+      if (!mounted) return false;
+      setState(() {
+        if (_resendTimer > 0) {
+          _resendTimer--;
+        } else {
+          _canResend = true;
+        }
+      });
+      return _resendTimer > 0;
+    });
+  }
+
+  Future<void> _resendCode() async {
+    if (!_canResend) return;
+    final auth = context.read<AuthProvider>();
+    await auth.sendOtp(widget.phoneNumber, () {
+      _startTimer();
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('OTP Resent Successfully')),
+      );
+    });
+  }
 
   Future<void> _verify(String code) async {
     final auth = context.read<AuthProvider>();
     final success = await auth.verifyOtp(code);
     if (success && mounted) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text('Welcome back, ${auth.displayName}!'),
+          backgroundColor: AppTheme.accentPurple,
+          behavior: SnackBarBehavior.floating,
+          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+        ),
+      );
       // If we are linking, we want to go back to settings
       // If we are logging in, AuthGate handles it
       if (Navigator.canPop(context)) {
@@ -104,6 +151,16 @@ class _OtpScreenState extends State<OtpScreen> {
                       style: GoogleFonts.poppins(color: AppTheme.expenseRed, fontSize: 13)),
                   ),
                 ],
+
+                const SizedBox(height: 32),
+                Center(
+                  child: _canResend 
+                    ? TextButton(
+                        onPressed: auth.loading ? null : _resendCode,
+                        child: Text('Resend Code', style: GoogleFonts.poppins(color: AppTheme.accentPurple, fontWeight: FontWeight.w600)),
+                      )
+                    : Text('Resend code in ${_resendTimer}s', style: GoogleFonts.poppins(color: AppTheme.textMuted, fontSize: 13)),
+                ),
                 
                 const Spacer(),
                 

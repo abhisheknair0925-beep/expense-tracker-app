@@ -63,6 +63,7 @@ class UserProvider extends ChangeNotifier {
         email: email,
         phone: phone,
         photoUrl: photoUrl,
+        currency: 'INR',
         createdAt: DateTime.now(),
         lastLogin: DateTime.now(),
         linkedProviders: providers,
@@ -110,6 +111,19 @@ class UserProvider extends ChangeNotifier {
     _selectedProfile = profile;
     notifyListeners();
     // Here you would typically also trigger a reload of profile-specific data (transactions, etc.)
+  }
+
+  /// Updates the preferred currency of the user.
+  Future<void> updateCurrency(String newCurrency) async {
+    if (_userProfile == null) return;
+    try {
+      final updatedUser = _userProfile!.copyWith(currency: newCurrency);
+      await _userService.updateUser(updatedUser);
+      _userProfile = updatedUser;
+      notifyListeners();
+    } catch (e) {
+      debugPrint('UserProvider: Error updating currency: $e');
+    }
   }
 
   /// Adds a new profile (e.g., adding Business profile if only Personal exists).

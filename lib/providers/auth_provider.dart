@@ -33,25 +33,31 @@ class AuthProvider extends ChangeNotifier {
   List<String> get linkedProviders => _auth.linkedProviders;
 
   AuthProvider(this._userProvider, this._sessionProvider) {
-    // Listen to auth state changes
-    _auth.authStateChanges.listen((user) async {
-      _user = user;
-      if (user != null) {
-        await _userProvider.loadUserData(user.uid);
-        await _sessionProvider.startSession(user.uid);
-        _sync.syncAll();
-      } else {
-        _userProvider.clear();
-      }
-      notifyListeners();
-    });
-    
     // Check initial user
     _user = _auth.currentUser;
     if (_user != null) {
       _userProvider.loadUserData(_user!.uid);
       _sessionProvider.checkSession();
     }
+
+    // Listen to auth state changes
+    _auth.authStateChanges.listen((user) async {
+      // Avoid redundant triggers if user is same
+      if (user?.uid == _user?.uid && _user != null) return;
+
+      _user = user;
+      if (user != null) {
+        await _userProvider.loadUserData(user.uid);
+        // Only start session if not already valid (e.g. from checkSession above)
+        if (!_sessionProvider.isSessionValid) {
+          await _sessionProvider.startSession(user.uid);
+        }
+        _sync.syncAll();
+      } else {
+        _userProvider.clear();
+      }
+      notifyListeners();
+    });
   }
 
   /// Sign in with Google or Link Google Account
@@ -162,11 +168,17 @@ class AuthProvider extends ChangeNotifier {
   Future<void> signOut() async {
     _loading = true;
     notifyListeners();
-    await _sessionProvider.logout();
-    _user = null;
-    _userProvider.clear();
-    _loading = false;
-    notifyListeners();
+    try {
+      await _sessionProvider.logout();
+      await _auth.signOut();
+      _user = null;
+      _userProvider.clear();
+    } catch (e) {
+      _error = 'Sign out error: $e';
+    } finally {
+      _loading = false;
+      notifyListeners();
+    }
   }
 
   /// Manually trigger a sync

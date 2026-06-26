@@ -7,6 +7,7 @@ import '../providers/transaction_provider.dart';
 import '../widgets/glass_filter_chips.dart';
 import '../widgets/glass_search_bar.dart';
 import '../widgets/transaction_tile.dart';
+import 'add_transaction_screen.dart';
 
 /// Transactions list with search bar and filter chips.
 class TransactionsScreen extends StatefulWidget {
@@ -75,15 +76,23 @@ class _TransactionsScreenState extends State<TransactionsScreen> {
                 sliver: SliverList(delegate: SliverChildBuilderDelegate(
                   (ctx, i) {
                     final t = list[i];
-                    return TransactionTile(txn: t, onDelete: () {
-                      p.remove(t.id!);
-                      ScaffoldMessenger.of(context).showSnackBar(SnackBar(
-                        content: Text('Deleted', style: GoogleFonts.poppins()),
-                        backgroundColor: AppTheme.primaryMid,
-                        behavior: SnackBarBehavior.floating,
-                        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-                      ));
-                    });
+                    return TransactionTile(
+                      txn: t,
+                      onDelete: () {
+                        p.remove(t.id!);
+                        ScaffoldMessenger.of(context).showSnackBar(SnackBar(
+                          content: Text('Deleted', style: GoogleFonts.poppins()),
+                          backgroundColor: AppTheme.primaryMid,
+                          behavior: SnackBarBehavior.floating,
+                          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                        ));
+                      },
+                      onEdit: () {
+                        Navigator.push(context, MaterialPageRoute(
+                          builder: (_) => AddTransactionScreen(transactionToEdit: t),
+                        ));
+                      },
+                    );
                   },
                   childCount: list.length,
                 )),

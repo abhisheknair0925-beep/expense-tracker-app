@@ -52,8 +52,17 @@ class LoginScreen extends StatelessWidget {
               // Google Sign-In button
               GestureDetector(
                 onTap: auth.loading ? null : () async {
-                  await auth.signInWithGoogle();
-                  // AuthGate will handle navigation automatically
+                  final success = await auth.signInWithGoogle();
+                  if (success && context.mounted) {
+                    ScaffoldMessenger.of(context).showSnackBar(
+                      SnackBar(
+                        content: Text('Welcome back, ${auth.displayName}!'),
+                        backgroundColor: AppTheme.accentPurple,
+                        behavior: SnackBarBehavior.floating,
+                        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+                      ),
+                    );
+                  }
                 },
                 child: GlassCard(
                   padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 16),

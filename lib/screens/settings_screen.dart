@@ -26,7 +26,6 @@ class SettingsScreen extends StatefulWidget {
 }
 
 class _SettingsScreenState extends State<SettingsScreen> {
-  String _currency = 'INR';
   bool _lockEnabled = false;
   bool _bioEnabled = false;
 
@@ -44,6 +43,9 @@ class _SettingsScreenState extends State<SettingsScreen> {
 
   @override
   Widget build(BuildContext context) {
+    final userProvider = context.watch<UserProvider>();
+    final currency = userProvider.userProfile?.currency ?? 'INR';
+
     return Scaffold(
       extendBodyBehindAppBar: true,
       body: Container(
@@ -105,24 +107,24 @@ class _SettingsScreenState extends State<SettingsScreen> {
             SliverToBoxAdapter(child: Padding(
               padding: const EdgeInsets.symmetric(horizontal: 16),
               child: GlassCard(padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 4), child: DropdownButtonFormField<String>(
-                initialValue: _currency, dropdownColor: AppTheme.primaryMid,
+                initialValue: currency, dropdownColor: AppTheme.primaryMid,
                 style: GoogleFonts.poppins(color: AppTheme.textPrimary),
                 decoration: InputDecoration(border: InputBorder.none, labelText: 'Display Currency', labelStyle: GoogleFonts.poppins(color: AppTheme.textMuted),
                   prefixIcon: const Icon(Icons.currency_exchange_rounded, color: AppTheme.textMuted)),
                 items: CurrencyService.instance.supportedCurrencies.map((c) => DropdownMenuItem(value: c,
                   child: Text('$c (${CurrencyService.symbols[c] ?? c})'))).toList(),
-                onChanged: (v) { if (v != null) setState(() => _currency = v); },
+                onChanged: (v) { if (v != null) userProvider.updateCurrency(v); },
               )),
             )),
-            if (_currency != 'INR')
+            if (currency != 'INR')
               SliverToBoxAdapter(child: Padding(
                 padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
                 child: GlassCard(padding: const EdgeInsets.all(14), child: Builder(builder: (ctx) {
                   final p = context.watch<TransactionProvider>();
                   return Row(mainAxisAlignment: MainAxisAlignment.spaceAround, children: [
-                    _miniConvert('Balance', p.balance, _currency),
-                    _miniConvert('Income', p.income, _currency),
-                    _miniConvert('Expense', p.expense, _currency),
+                    _miniConvert('Balance', p.balance, currency),
+                    _miniConvert('Income', p.income, currency),
+                    _miniConvert('Expense', p.expense, currency),
                   ]);
                 })),
               )),
@@ -205,8 +207,24 @@ class _SettingsScreenState extends State<SettingsScreen> {
                   _tile(Icons.cloud_sync_rounded, 'Sync Now', SyncService.instance.statusText, AppTheme.accentBlue, () => auth.manualSync()),
                   // Sign out
                   _tile(Icons.logout_rounded, 'Sign Out', 'Remove account from this device', AppTheme.expenseRed, () async {
-                    await auth.signOut();
-                    if (context.mounted) Navigator.pushNamedAndRemoveUntil(context, '/login', (route) => false);
+                    final confirm = await showDialog<bool>(
+                      context: context,
+                      builder: (ctx) => AlertDialog(
+                        backgroundColor: AppTheme.primaryMid,
+                        title: Text('Sign Out', style: GoogleFonts.poppins(color: AppTheme.textPrimary, fontWeight: FontWeight.w600)),
+                        content: Text('Are you sure you want to sign out? Your local data will remain, but cloud sync will stop.', 
+                          style: GoogleFonts.poppins(color: AppTheme.textSecondary)),
+                        actions: [
+                          TextButton(onPressed: () => Navigator.pop(ctx, false), child: Text('Cancel', style: GoogleFonts.poppins(color: AppTheme.textMuted))),
+                          TextButton(onPressed: () => Navigator.pop(ctx, true), child: Text('Sign Out', style: GoogleFonts.poppins(color: AppTheme.expenseRed, fontWeight: FontWeight.w600))),
+                        ],
+                      ),
+                    );
+                    
+                    if (confirm == true) {
+                      await auth.signOut();
+                      if (context.mounted) Navigator.pushNamedAndRemoveUntil(context, '/login', (route) => false);
+                    }
                   }),
                 ]);
               }),
@@ -240,7 +258,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
 
   Widget _miniConvert(String label, double amount, String currency) => Column(children: [
     Text(label, style: GoogleFonts.poppins(color: AppTheme.textMuted, fontSize: 10)),
-    Text(CurrencyService.instance.format(amount, currency), style: GoogleFonts.poppins(color: AppTheme.textPrimary, fontSize: 14, fontWeight: FontWeight.w600)),
+    Text(CurrencyService.instance.format(amount, currency, convertFromInr: true), style: GoogleFonts.poppins(color: AppTheme.textPrimary, fontSize: 14, fontWeight: FontWeight.w600)),
   ]);
 
   void _setupPin() {

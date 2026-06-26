@@ -10,9 +10,11 @@ import 'glass_card.dart';
 /// Transaction list tile with category icon and swipe-to-delete.
 class TransactionTile extends StatelessWidget {
   final Txn txn;
+  final String currency;
   final VoidCallback? onDelete;
+  final VoidCallback? onEdit;
 
-  const TransactionTile({super.key, required this.txn, this.onDelete});
+  const TransactionTile({super.key, required this.txn, this.currency = 'INR', this.onDelete, this.onEdit});
 
   @override
   Widget build(BuildContext context) {
@@ -36,7 +38,8 @@ class TransactionTile extends StatelessWidget {
         child: const Icon(Icons.delete_rounded, color: AppTheme.expenseRed),
       ),
       child: GlassCard(
-        onTap: hasReceipt ? () => _showReceiptViewer(context, txn.receiptPath!) : null,
+        onTap: onEdit,
+        onLongPress: hasReceipt ? () => _showReceiptViewer(context, txn.receiptPath!) : null,
         padding: const EdgeInsets.all(14),
         child: Row(children: [
           Container(
@@ -72,11 +75,56 @@ class TransactionTile extends StatelessWidget {
             ),
           ),
           Text(
-            '${txn.isIncome ? '+' : '-'} ${Fmt.money(txn.amount)}',
+            '${txn.isIncome ? '+' : '-'} ${Fmt.money(txn.amount, currency)}',
             style: GoogleFonts.poppins(color: color, fontSize: 14, fontWeight: FontWeight.w600),
           ),
+          const SizedBox(width: 8),
+          _moreMenu(context),
         ]),
       ),
+    );
+  }
+
+  Widget _moreMenu(BuildContext context) {
+    return PopupMenuButton<String>(
+      icon: const Icon(Icons.more_vert_rounded, color: AppTheme.textMuted, size: 20),
+      color: AppTheme.primaryMid,
+      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+      onSelected: (val) {
+        if (val == 'edit') onEdit?.call();
+        if (val == 'delete') {
+          showDialog(
+            context: context,
+            builder: (ctx) => AlertDialog(
+              backgroundColor: AppTheme.primaryMid,
+              title: Text('Delete Transaction', style: GoogleFonts.poppins(color: AppTheme.textPrimary, fontWeight: FontWeight.w600)),
+              content: Text('Are you sure you want to delete this transaction?', style: GoogleFonts.poppins(color: AppTheme.textSecondary)),
+              actions: [
+                TextButton(onPressed: () => Navigator.pop(ctx), child: Text('Cancel', style: GoogleFonts.poppins(color: AppTheme.textMuted))),
+                TextButton(onPressed: () { Navigator.pop(ctx); onDelete?.call(); }, child: Text('Delete', style: GoogleFonts.poppins(color: AppTheme.expenseRed, fontWeight: FontWeight.w600))),
+              ],
+            ),
+          );
+        }
+      },
+      itemBuilder: (ctx) => [
+        PopupMenuItem(
+          value: 'edit',
+          child: Row(children: [
+            const Icon(Icons.edit_rounded, color: AppTheme.accentPurple, size: 18),
+            const SizedBox(width: 10),
+            Text('Edit', style: GoogleFonts.poppins(color: AppTheme.textPrimary, fontSize: 13)),
+          ]),
+        ),
+        PopupMenuItem(
+          value: 'delete',
+          child: Row(children: [
+            const Icon(Icons.delete_outline_rounded, color: AppTheme.expenseRed, size: 18),
+            const SizedBox(width: 10),
+            Text('Delete', style: GoogleFonts.poppins(color: AppTheme.textPrimary, fontSize: 13)),
+          ]),
+        ),
+      ],
     );
   }
 

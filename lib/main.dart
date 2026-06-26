@@ -134,16 +134,23 @@ class AuthGate extends StatelessWidget {
     return Consumer<SessionProvider>(
       builder: (context, session, _) {
         if (!session.isSessionValid) {
-          // Trigger check if not already validated
-          session.checkSession();
-          return const Scaffold(
-            body: Center(child: CircularProgressIndicator()),
+          if (!session.isChecking) {
+            session.checkSession();
+          }
+          return Scaffold(
+            body: Container(
+              decoration: const BoxDecoration(gradient: AppTheme.bgGradient),
+              child: const Center(child: CircularProgressIndicator(color: AppTheme.accentPurple)),
+            ),
           );
         }
 
         if (userProvider.loading) {
-          return const Scaffold(
-            body: Center(child: CircularProgressIndicator()),
+          return Scaffold(
+            body: Container(
+              decoration: const BoxDecoration(gradient: AppTheme.bgGradient),
+              child: const Center(child: CircularProgressIndicator(color: AppTheme.accentPurple)),
+            ),
           );
         }
 
